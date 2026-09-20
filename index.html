@@ -957,3 +957,40 @@ function populateCountryDropdown(elementId) {
     `<option value="${c.code}" data-currency="${c.currency}" data-dial="${c.dial}">${c.name} (${c.dial})</option>`
   ).join('');
 }
+<!-- Country & Region Selector -->
+<div class="field-group">
+  <label>Country / Region</label>
+  <select id="checkout-country" onchange="onCountryChange(this.value)" class="input-field">
+    <!-- Populated by JS -->
+  </select>
+</div>
+
+<div class="field-row" style="display: flex; gap: 10px;">
+  <div style="flex: 1;">
+    <label>State / Province</label>
+    <input type="text" id="checkout-state" placeholder="e.g. California / Dubai" class="input-field">
+  </div>
+  <div style="flex: 1;">
+    <label>ZIP / Postal Code</label>
+    <input type="text" id="checkout-zip" placeholder="90210" class="input-field">
+  </div>
+</div>
+
+<!-- International Phone Number with Country Dial Code -->
+<div class="field-group">
+  <label>Phone Number</label>
+  <div style="display: flex; gap: 8px;">
+    <span id="phone-prefix" style="padding: 10px; background: #eee; border-radius: 6px;">+1</span>
+    <input type="tel" id="checkout-phone" placeholder="300 1234567" class="input-field" style="flex: 1;">
+  </div>
+</div>
+
+<!-- Payment Gateway Selection -->
+<div class="field-group">
+  <label>Payment Method</label>
+  <select id="checkout-payment-method" class="input-field">
+    <option value="stripe">💳 Credit / Debit Card (Stripe)</option>
+    <option value="paypal">🅿️ PayPal</option>
+    <option value="cod">💵 Cash on Delivery (Select Countries Only)</option>
+  </select>
+</div>
