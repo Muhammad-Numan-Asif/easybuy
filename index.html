@@ -994,3 +994,33 @@ function populateCountryDropdown(elementId) {
     <option value="cod">💵 Cash on Delivery (Select Countries Only)</option>
   </select>
 </div>
+// Include Stripe.js SDK in <head>: <script src="https://js.stripe.com/v3/"></script>
+
+async function handleInternationalCheckout(orderData) {
+  const selectedPayment = document.getElementById('checkout-payment-method').value;
+
+  if (selectedPayment === 'stripe') {
+    // 1. Call your Supabase Edge Function or Backend Server to create Stripe Session
+    const response = await fetch('YOUR_SUPABASE_FUNCTIONS_URL/create-stripe-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: orderData.items,
+        currency: orderData.currency,
+        customer_email: orderData.customerEmail,
+        success_url: window.location.href + '?success=true',
+        cancel_url: window.location.href + '?cancel=true'
+      })
+    });
+
+    const session = await response.json();
+    const stripe = Stripe('YOUR_STRIPE_PUBLISHABLE_KEY');
+    
+    // Redirect customer to Stripe Secure Checkout
+    await stripe.redirectToCheckout({ sessionId: session.id });
+
+  } else if (selectedPayment === 'cod') {
+    // Standard COD Order submission logic
+    saveOrderToSupabase(orderData);
+  }
+}
