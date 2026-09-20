@@ -157,3 +157,42 @@ create policy "product images owner update" on storage.objects for update to aut
   using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "product images owner delete" on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
+-- EasyBuy Stage 6: International Expansion Patch
+
+-- 1. Store settings update for Multi-Currency & Payments
+ALTER TABLE public.stores 
+ADD COLUMN IF NOT EXISTS default_currency TEXT NOT NULL DEFAULT 'USD',
+ADD COLUMN IF NOT EXISTS supported_currencies JSONB NOT NULL DEFAULT '["USD", "EUR", "GBP", "PKR", "AED", "SAR"]'::jsonb,
+ADD COLUMN IF NOT EXISTS payment_gateways JSONB NOT NULL DEFAULT '{"stripe": {"enabled": false}, "paypal": {"enabled": false}, "cod": {"enabled": true}}'::jsonb,
+ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5,2) NOT NULL DEFAULT 0.00;
+
+-- 2. Shipping Zones Table for Worldwide Shipping
+CREATE TABLE IF NOT EXISTS public.shipping_zones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  store_id UUID REFERENCES public.stores(id) ON DELETE CASCADE,
+  zone_name TEXT NOT NULL, -- e.g., "North America", "Europe", "GCC Countries", "Rest of World"
+  countries JSONB NOT NULL DEFAULT '[]'::jsonb, -- e.g., ["US", "CA", "GB", "AE", "SA"]
+  rate NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  min_order_amount NUMERIC(10,2) DEFAULT 0.00,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS Security for Shipping Zones
+ALTER TABLE public.shipping_zones ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY shipping_zones_select ON public.shipping_zones 
+FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY shipping_zones_all_owner ON public.shipping_zones 
+FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM public.stores s WHERE s.id = shipping_zones.store_id AND s.owner_id = auth.uid()));
+
+-- 3. International Address & Payment details in Orders
+ALTER TABLE public.orders 
+ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'USD',
+ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(10,4) NOT NULL DEFAULT 1.0000,
+ADD COLUMN IF NOT EXISTS country_code TEXT DEFAULT 'US',
+ADD COLUMN IF NOT EXISTS postal_code TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS state_province TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS payment_gateway TEXT DEFAULT 'cod', -- stripe, paypal, cod
+ADD COLUMN IF NOT EXISTS transaction_id TEXT DEFAULT '';
