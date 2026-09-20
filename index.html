@@ -904,3 +904,56 @@ if((location.hash||'#/').startsWith('#/dashboard') && USER) renderDash();
 </script>
 </body>
 </html>
+// EasyBuy International Engine
+
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AED: 'AED ',
+  SAR: 'SAR ',
+  PKR: 'Rs. '
+};
+
+// Static Exchange Rates (Aap API se live rates bhi fetch kar sakte hain)
+const EXCHANGE_RATES = {
+  USD: 1.00,
+  EUR: 0.92,
+  GBP: 0.79,
+  AED: 3.67,
+  SAR: 3.75,
+  PKR: 278.50
+};
+
+// 1. Format Currency with Symbol
+function formatGlobalMoney(amountInUSD, targetCurrency = 'USD') {
+  const rate = EXCHANGE_RATES[targetCurrency] || 1.0;
+  const convertedAmount = amountInUSD * rate;
+  const symbol = CURRENCY_SYMBOLS[targetCurrency] || targetCurrency + ' ';
+
+  return `${symbol}${convertedAmount.toLocaleString(undefined, {
+    minimumFractionDigits: targetCurrency === 'PKR' ? 0 : 2,
+    maximumFractionDigits: targetCurrency === 'PKR' ? 0 : 2
+  })}`;
+}
+
+// 2. Dynamic Country Selector for Checkout
+const GLOBAL_COUNTRIES = [
+  { code: 'US', name: 'United States', dial: '+1', currency: 'USD' },
+  { code: 'GB', name: 'United Kingdom', dial: '+44', currency: 'GBP' },
+  { code: 'AE', name: 'United Arab Emirates', dial: '+971', currency: 'AED' },
+  { code: 'SA', name: 'Saudi Arabia', dial: '+966', currency: 'SAR' },
+  { code: 'PK', name: 'Pakistan', dial: '+92', currency: 'PKR' },
+  { code: 'CA', name: 'Canada', dial: '+1', currency: 'USD' },
+  { code: 'DE', name: 'Germany', dial: '+49', currency: 'EUR' },
+  { code: 'AU', name: 'Australia', dial: '+61', currency: 'USD' }
+];
+
+function populateCountryDropdown(elementId) {
+  const select = document.getElementById(elementId);
+  if (!select) return;
+
+  select.innerHTML = GLOBAL_COUNTRIES.map(c => 
+    `<option value="${c.code}" data-currency="${c.currency}" data-dial="${c.dial}">${c.name} (${c.dial})</option>`
+  ).join('');
+}
