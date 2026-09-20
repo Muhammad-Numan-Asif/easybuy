@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EasyBuy: apni online dukaan banao</title>
+<meta name="description" content="EasyBuy lets anyone in Pakistan open an online store with Cash on Delivery, a seller dashboard and WhatsApp orders.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6f4;--surface:#ffffff;--ink:#10231d;--muted:#57675f;--line:#d9e3de;
+  --brand:#0a7d55;--on-brand:#ffffff;--sun:#ffc933;--coral:#d8452e;
+  --shadow:0 1px 2px rgba(16,35,29,.06),0 14px 34px -14px rgba(16,35,29,.22);
+  --disp:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0c1512;--surface:#13221c;--ink:#e8f1ec;--muted:#93a59c;--line:#233429;--brand:#2fcf93;--on-brand:#05261a;--shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -14px rgba(0,0,0,.6)}
+}
+:root[data-theme="dark"]{--bg:#0c1512;--surface:#13221c;--ink:#e8f1ec;--muted:#93a59c;--line:#233429;--brand:#2fcf93;--on-brand:#05261a;--shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px -14px rgba(0,0,0,.6)}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 76px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-text-size-adjust:100%}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--disp);line-height:1.08;margin:0;letter-spacing:-.02em}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+.fine{font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* buttons and fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:11px 16px;font-weight:600;cursor:pointer;min-height:44px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.big{padding:15px 22px;font-size:17px;width:100%}
+.btn.small{padding:6px 11px;min-height:34px;font-size:14px;border-radius:9px}
+.btn.danger{color:var(--coral);border-color:var(--coral)}
+.btn.accent{background:var(--accent,var(--brand));border-color:var(--accent,var(--brand));color:var(--on-accent,#fff)}
+label{display:block;font-weight:600;font-size:14px;margin-bottom:12px}
+input,select,textarea{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;background:var(--surface);font-weight:400}
+textarea{resize:vertical;min-height:84px}
+fieldset{border:0;padding:0;margin:0 0 14px}
+legend{font-weight:600;font-size:14px;padding:0;margin-bottom:8px}
+
+/* site header */
+.site-head{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:18px;padding-top:12px;padding-bottom:12px}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:-.03em}
+.logo svg{width:30px;height:30px}
+.nav-links{margin-left:auto;display:flex;align-items:center;gap:6px}
+.nav-links a{padding:9px 12px;border-radius:10px;font-weight:600;font-size:15px}
+.nav-links a.on{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.nav-links .btn{padding:9px 14px;min-height:40px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;padding-top:56px;padding-bottom:64px}
+.hero h1{font-size:clamp(38px,5.4vw,64px);font-weight:800}
+.lead{font-size:18px;color:var(--muted);max-width:32em;margin:18px 0 26px}
+.builder{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 13px;font-weight:600;font-size:14px;cursor:pointer;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:36px;height:36px;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+
+/* live preview frame */
+.hero-preview{position:sticky;top:calc(env(safe-area-inset-top,0px) + 84px)}
+.frame{border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}
+.frame-bar{display:flex;align-items:center;gap:6px;padding:11px 14px;background:var(--bg);border-bottom:1px solid var(--line)}
+.frame-bar i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.frame-bar span{margin-left:10px;flex:1;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px}
+.pv-head b{font-family:var(--disp);font-size:20px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-cart{background:var(--accent);color:var(--on-accent);border-radius:9px;padding:6px 11px;font-size:13px;font-weight:600}
+.pv-band{background:var(--accent);color:var(--on-accent);padding:26px 18px}
+.pv-band h3{font-size:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-band p{margin:6px 0 0;font-size:14px;opacity:.9}
+.pv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 18px 20px}
+.pv-tile{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.pv-pic{height:84px;display:grid;place-items:center;font-size:38px;background:var(--bg)}
+.pv-txt{padding:9px}
+.pv-txt s{display:block;height:8px;border-radius:4px;background:var(--line);margin-bottom:6px}
+.pv-txt s:first-child{width:80%}
+.pv-txt strong{font-size:13px;color:var(--accent)}
+.pv-note{font-size:13px;color:var(--muted);margin:12px 4px 0;text-align:center}
+
+/* sections on home */
+.block{padding:56px 0;border-top:1px solid var(--line)}
+.block h2{font-size:clamp(28px,3.6vw,40px);font-weight:800;margin-bottom:8px}
+.block .sub{color:var(--muted);margin:0 0 28px;max-width:34em}
+.store-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.store-row{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.store-dot{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px;flex:none}
+.store-row b{display:block;font-family:var(--disp);font-size:18px;letter-spacing:-.01em}
+.store-row small{color:var(--muted)}
+.store-row .btn{margin-left:auto}
+.perks{display:grid;grid-template-columns:1fr 1fr;column-gap:56px}
+.perk{padding:20px 0;border-bottom:1px solid var(--line)}
+.perk h3{font-size:22px;margin-bottom:6px;font-weight:600}
+.perk p{margin:0;color:var(--muted)}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.steps li{padding-top:14px;border-top:3px solid var(--brand)}
+.steps b{display:block;font-family:var(--disp);font-size:20px;margin-bottom:4px}
+.steps span{color:var(--muted)}
+.site-foot{border-top:1px solid var(--line);padding:32px 0 44px;color:var(--muted);font-size:14px}
+
+/* dashboard */
+.dash{padding-top:32px;padding-bottom:64px}
+.dash-head{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:22px}
+.dash-head .pick{min-width:220px;flex:1;max-width:340px}
+.dash-head .pick label{margin:0}
+.dash-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.stats{display:flex;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-bottom:22px}
+.stat{flex:1 1 140px;padding:16px 20px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--disp);font-size:30px;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:14px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tab{border:0;background:none;padding:12px 16px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;min-height:44px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--brand)}
+.panel-box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.row-head h2{font-size:22px}
+.prow{display:flex;gap:14px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.prow:first-of-type{border-top:0}
+.thumb{width:56px;height:56px;border-radius:12px;background:var(--bg);display:grid;place-items:center;font-size:28px;overflow:hidden;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.prow .meta{flex:1;min-width:0}
+.prow .meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .meta small{color:var(--muted)}
+.order{padding:18px 0;border-top:1px solid var(--line)}
+.order:first-of-type{border-top:0;padding-top:4px}
+.order-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.order-top time{margin-left:auto;color:var(--muted);font-size:13px}
+.order p{margin:2px 0;color:var(--muted);font-size:15px}
+.order ul{margin:8px 0;padding-left:18px;font-size:15px}
+.order-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.order-foot select{width:auto;margin:0;padding:8px 10px}
+.order-foot strong{margin-right:auto;font-family:var(--disp);font-size:18px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+.st-New{background:#ffc933;color:#3a2a00}.st-Confirmed{background:#cfe6ff;color:#0b3d66}
+.st-Shipped{background:#e3d7ff;color:#3b2378}.st-Delivered{background:#c6f0da;color:#0b4a2c}.st-Cancelled{background:#ffd9d2;color:#7a1f10}
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty h2,.empty h3{color:var(--ink);margin-bottom:8px}
+.img-pick{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.img-pick input{margin:0}
+
+/* storefront */
+#v-store{background:var(--bg);min-height:100vh}
+.eb-bar{background:var(--ink);color:var(--bg);font-size:13px;padding:8px 16px;text-align:center}
+.eb-bar a{text-decoration:underline;margin-left:12px}
+.sf-head{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+.sf-nav{display:flex;align-items:center;justify-content:space-between;padding-top:12px;padding-bottom:12px}
+.sf-logo{font-family:var(--disp);font-size:24px;letter-spacing:-.03em}
+.sf-hero{background:var(--accent);color:var(--on-accent);padding:52px 0 46px}
+.sf-hero h1{font-size:clamp(34px,5vw,56px);font-weight:800}
+.sf-hero p{max-width:34em;font-size:18px;margin:12px 0 0;opacity:.92}
+.sf-trust{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.sf-trust span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:6px 13px;font-size:14px;font-weight:600}
+.sf-main{padding-top:30px;padding-bottom:60px}
+.sf-main .search{max-width:420px;margin-bottom:22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.card .pic{height:200px;background:var(--bg);display:grid;place-items:center;font-size:72px;overflow:hidden}
+.card .pic img{width:100%;height:100%;object-fit:cover}
+.card .body{padding:16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .cat{font-size:13px;color:var(--muted)}
+.card h3{font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+.card .desc{font-size:14px;color:var(--muted);flex:1}
+.price{font-family:var(--disp);font-size:21px;font-weight:800}
+.price s{font-family:var(--body);font-weight:400;font-size:14px;color:var(--muted);margin-left:6px}
+.sf-foot{border-top:1px solid var(--line);padding:26px 0 40px;font-size:14px;color:var(--muted)}
+.drawer{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none}
+.drawer.open{display:block}
+.drawer .sheet{margin-left:auto;background:var(--surface);width:min(440px,100%);height:100%;padding:22px;overflow:auto;padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+.drawer.open .sheet{animation:slide .22s ease-out}
+@keyframes slide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sheet-head h2{font-size:24px}
+.ci{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ci small{color:var(--muted)}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:32px;height:32px;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer}
+.total{display:flex;justify-content:space-between;font-family:var(--disp);font-size:20px;font-weight:800;margin:14px 0}
+.modal{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:none;place-items:center;padding:20px}
+.modal.open{display:grid}
+.modal .box{background:var(--surface);border-radius:20px;padding:26px;max-width:420px;width:100%}
+.modal h2{font-size:26px;margin-bottom:10px}
+.modal p{color:var(--muted);margin:0 0 18px}
+.modal .btn{width:100%;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;font-weight:600;font-size:15px;z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;gap:28px;padding-top:36px}
+  .hero-preview{position:static}
+  .perks{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+  .two{grid-template-columns:1fr}
+  .nav-links a:not(.btn){display:none}
+  .dash-actions{margin-left:0}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .stat{flex-basis:50%;border-bottom:1px solid var(--line)}
+  .store-row{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* stage 2 additions */
+.auth{max-width:460px;padding-top:56px;padding-bottom:72px}
+.auth h2{font-size:28px;margin-bottom:6px}
+.linkbtn{background:none;border:0;padding:0;color:var(--brand);font-weight:600;cursor:pointer;text-decoration:underline}
+.banner{background:var(--sun);color:#3a2a00;padding:14px 20px;font-size:15px}
+.banner code{background:rgba(0,0,0,.1);padding:1px 6px;border-radius:5px}
+.nav-links .linkbtn{color:var(--ink);text-decoration:none;padding:9px 12px;font-size:15px}
+
+/* EasyBuy Stage 3 visual system */
+.dash-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:22px;align-items:start}.dash-side{position:sticky;top:88px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px;box-shadow:var(--shadow)}.dash-side .side-store{padding:12px;border-bottom:1px solid var(--line);margin-bottom:8px}.dash-side .side-store b{display:block;font-family:var(--disp);font-size:18px}.side-nav{display:grid;gap:4px}.side-nav button{border:0;background:none;text-align:left;padding:11px 12px;border-radius:10px;cursor:pointer;font-weight:600;color:var(--muted)}.side-nav button.active,.side-nav button:hover{background:var(--bg);color:var(--ink)}.side-help{margin-top:12px;padding:12px;border-radius:12px;background:var(--bg);font-size:13px;color:var(--muted)}.dash-main{min-width:0}.dash-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}.dash-top h1{font-size:30px}.dash-top p{margin:4px 0 0;color:var(--muted)}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.metric{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}.metric span{font-size:13px;color:var(--muted)}.metric b{display:block;font-family:var(--disp);font-size:28px;margin-top:5px}.dashboard-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}.quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.quick{border:1px solid var(--line);border-radius:14px;padding:15px;background:var(--surface);cursor:pointer}.quick:hover{border-color:var(--brand);transform:translateY(-1px)}.quick b{display:block;margin-bottom:3px}.quick span{font-size:13px;color:var(--muted)}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:middle}.table th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.table td{font-size:14px}.product-cell{display:flex;align-items:center;gap:10px;min-width:180px}.product-cell .thumb{width:44px;height:44px;border-radius:10px;font-size:22px}.actions{display:flex;gap:7px;justify-content:flex-end}.mini-status{font-size:12px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--bg)}.sf-tools{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap}.sf-tools .search{margin:0;max-width:520px}.cat-filter{display:flex;gap:7px;overflow:auto}.cat-filter button{white-space:nowrap;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:600}.cat-filter button.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}.product-modal .box{max-width:760px}.product-modal-inner{display:grid;grid-template-columns:1fr 1fr;gap:24px}.product-modal-pic{min-height:300px;border-radius:16px;background:var(--bg);overflow:hidden;display:grid;place-items:center;font-size:100px}.product-modal-pic img{width:100%;height:100%;object-fit:cover}.product-modal h2{font-size:30px}.product-modal .buy{margin-top:18px}.badge-sale{display:inline-flex;background:#ffe6df;color:#9b2e1f;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.mobile-dash-nav{display:none}
+@media(max-width:900px){.dash-shell{grid-template-columns:1fr}.dash-side{display:none}.mobile-dash-nav{display:flex;gap:7px;overflow:auto;margin-bottom:14px}.mobile-dash-nav button{white-space:nowrap}.metric-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.metric-grid,.quick-grid{grid-template-columns:1fr 1fr}.table-wrap{overflow:auto}.table{min-width:680px}.product-modal-inner{grid-template-columns:1fr}.product-modal-pic{min-height:230px}.dash-top{align-items:flex-start;flex-direction:column}}
+
+/* ---------- EasyBuy advanced commerce UI ---------- */
+.advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.advanced-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}.advanced-card h2{font-size:21px;margin-bottom:5px}.advanced-card h3{font-size:17px;margin-bottom:8px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.metric{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}.metric b{display:block;font-family:var(--disp);font-size:26px}.metric span{font-size:13px;color:var(--muted)}.bar-row{display:grid;grid-template-columns:120px 1fr 80px;gap:10px;align-items:center;margin:9px 0}.bar{height:10px;border-radius:99px;background:var(--bg);overflow:hidden}.bar i{display:block;height:100%;background:var(--brand);border-radius:inherit}.mini-table{width:100%;border-collapse:collapse}.mini-table th,.mini-table td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);font-size:14px}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--bg);font-size:12px;font-weight:700}.advanced-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.advanced-form .full{grid-column:1/-1}.admin-banner{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--brand) 12%,var(--surface));border:1px solid var(--line);margin-bottom:16px}.track-wrap{max-width:620px;margin:60px auto}.track-result{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.stars{letter-spacing:2px}.wishlist-on{color:var(--coral)}
+@media(max-width:900px){.advanced-grid,.advanced-form{grid-template-columns:1fr}.metric-grid{grid-template-columns:1fr 1fr}.bar-row{grid-template-columns:90px 1fr 65px}}
+@media(max-width:560px){.metric-grid{grid-template-columns:1fr 1fr}.metric b{font-size:22px}}
+
+/* ---------- EasyBuy Stage 5: Shopify-style admin shell ---------- */
+.s5-shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px;align-items:start}.s5-side{position:sticky;top:80px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px;box-shadow:var(--shadow);max-height:calc(100vh - 100px);overflow:auto}.s5-brand{display:flex;align-items:center;gap:10px;padding:12px 10px 14px;border-bottom:1px solid var(--line);margin-bottom:8px}.s5-brand .dot{width:36px;height:36px;border-radius:10px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-weight:800}.s5-brand b{font-family:var(--disp);font-size:17px}.s5-brand small{display:block;color:var(--muted);font-size:12px}.s5-nav{display:grid;gap:2px}.s5-nav button{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--muted);padding:10px 11px;border-radius:9px;text-align:left;font-weight:600;cursor:pointer}.s5-nav button:hover,.s5-nav button.active{background:var(--bg);color:var(--ink)}.s5-nav .nav-group{padding:13px 11px 5px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.s5-main{min-width:0}.s5-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.s5-topbar h1{font-size:31px}.s5-topbar p{margin:4px 0 0;color:var(--muted)}.s5-top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.s5-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}.s5-card h2{font-size:19px;margin-bottom:4px}.s5-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.s5-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.s5-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.s5-kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px}.s5-kpi small{color:var(--muted);display:block}.s5-kpi strong{display:block;font-family:var(--disp);font-size:26px;margin-top:4px}.s5-list{display:grid;gap:8px}.s5-list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:11px}.s5-list-item .meta{color:var(--muted);font-size:13px}.s5-switch{position:relative;display:inline-flex;align-items:center;gap:8px}.s5-switch input{width:20px;margin:0}.s5-preview{min-height:330px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}.s5-preview-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.s5-preview-hero{padding:34px 22px;background:var(--accent,var(--brand));color:var(--on-accent,#fff)}.s5-preview-hero h3{font-size:30px}.s5-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}.s5-preview-product{border:1px solid var(--line);border-radius:11px;overflow:hidden}.s5-preview-product .ph{height:90px;background:var(--bg);display:grid;place-items:center;font-size:30px}.s5-preview-product .pt{padding:9px;font-size:13px}.s5-tag{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:var(--bg);font-size:12px;font-weight:700}.s5-domain{display:flex;align-items:center;gap:8px}.s5-domain input{margin:0}.s5-mobile-nav{display:none}.s5-empty{padding:36px;text-align:center;color:var(--muted)}
+@media(max-width:980px){.s5-shell{grid-template-columns:1fr}.s5-side{display:none}.s5-mobile-nav{display:flex;gap:6px;overflow:auto;margin-bottom:12px}.s5-mobile-nav button{white-space:nowrap}.s5-grid{grid-template-columns:1fr 1fr}.s5-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.s5-grid,.s5-grid2{grid-template-columns:1fr}.s5-kpis{grid-template-columns:1fr 1fr}.s5-topbar{align-items:flex-start;flex-direction:column}.s5-preview-grid{grid-template-columns:1fr 1fr}}
+
+</style>
+</head>
+<body>
+
+<div class="banner" id="setup" hidden><b>Setup needed.</b> Open <code>config.js</code> and paste your Supabase project URL and anon key. Steps are in README.md.</div>
+
+<header class="site-head" id="siteHeader">
+  <nav class="wrap nav">
+    <a class="logo" href="#/" aria-label="EasyBuy home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--brand)"/><path d="M9 12h14l-1.4 10a2 2 0 0 1-2 1.7h-7.2a2 2 0 0 1-2-1.7L9 12Z" fill="var(--on-brand)"/><path d="M12.5 12v-1.5a3.5 3.5 0 0 1 7 0V12" fill="none" stroke="#ffc933" stroke-width="2" stroke-linecap="round"/></svg>
+      EasyBuy
+    </a>
+    <div class="nav-links">
+      <a href="#/" data-nav="home">Home</a>
+      <a href="#/dashboard" data-nav="dashboard">Seller dashboard</a>
+      <button class="linkbtn" id="navAuth" type="button">Log in</button>
+      <a class="btn primary" href="#/" id="navCreate">Store banao</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+<!-- HOME -->
+<div id="v-home" data-view>
+  <div class="wrap hero" id="builderTop">
+    <div>
+      <h1>Apni online dukaan banao, 5 minute mein.</h1>
+      <p class="lead">Products daalo aur apna link share karo. Orders dashboard mein aate hain, WhatsApp par bhejne ka button saath hai, aur Cash on Delivery pehle din se chalta hai.</p>
+      <form class="builder" id="builder" autocomplete="off">
+        <label>Store ka naam
+          <input id="bName" maxlength="28" placeholder="Jaise: Pawtico, Ali Traders">
+        </label>
+        <fieldset><legend>Kya bechte hain?</legend><div class="chips" id="bCats"></div></fieldset>
+        <fieldset><legend>Store ka rang</legend><div class="swatches" id="bColors"></div></fieldset>
+        <label>WhatsApp number
+          <input id="bWa" inputmode="tel" placeholder="03XXXXXXXXX">
+        </label>
+        <button class="btn primary big" type="submit">Store banao</button>
+        <p class="fine">Ye prototype hai. Aap ka data sirf is browser mein save hota hai.</p>
+      </form>
+    </div>
+    <div class="hero-preview" aria-label="Live preview of your store">
+      <div class="frame" id="frame">
+        <div class="frame-bar"><i></i><i></i><i></i><span id="pvUrl">yourstore.easybuy.pk</span></div>
+        <div class="pv-head"><b id="pvName">Your store</b><span class="pv-cart">Cart 0</span></div>
+        <div class="pv-band"><h3 id="pvBand">Your store</h3><p>Cash on Delivery across Pakistan</p></div>
+        <div class="pv-grid" id="pvGrid"></div>
+      </div>
+      <p class="pv-note">Jo aap upar likhte hain, store yahan usi waqt badalta hai.</p>
+    </div>
+  </div>
+
+  <section class="wrap block" id="stores">
+    <h2>EasyBuy par bane stores</h2>
+    <p class="sub">Kisi bhi store par click karke dekho ke customer ko kya nazar aata hai. Wahan se test order bhi de sakte ho.</p>
+    <div class="store-list" id="storeList"></div>
+  </section>
+
+  <section class="wrap block">
+    <h2>Seller ko kya milta hai</h2>
+    <p class="sub">Shuru mein sirf wo cheezein jo Pakistan mein online bechne ke liye sach mein chahiye.</p>
+    <div class="perks">
+      <div class="perk"><h3>Cash on Delivery</h3><p>Customer parcel milne par payment karta hai. Payment gateway ka intezar nahi.</p></div>
+      <div class="perk"><h3>Orders do jagah</h3><p>Har order dashboard mein dikhta hai, aur customer ko WhatsApp par message karne ka button saath hota hai.</p></div>
+      <div class="perk"><h3>Apna store link</h3><p>Har store ka apna link. Instagram bio ya WhatsApp status par laga do.</p></div>
+      <div class="perk"><h3>Phone par theek chalta hai</h3><p>Store aur dashboard dono mobile screen ke hisaab se bane hain.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap block">
+    <h2>Shuru kaise karein</h2>
+    <p class="sub">Teen kaam, is tarteeb se.</p>
+    <ol class="steps">
+      <li><b>Store banao</b><span>Naam, rang aur WhatsApp number daalo.</span></li>
+      <li><b>Products daalo</b><span>Dashboard mein photo, price aur description add karo.</span></li>
+      <li><b>Link share karo</b><span>Orders dashboard mein aate jayenge, status wahin se badlo.</span></li>
+    </ol>
+  </section>
+</div>
+
+
+<!-- LOGIN -->
+<div id="v-login" data-view hidden></div>
+<!-- DASHBOARD -->
+<div id="v-dashboard" data-view hidden><div class="wrap dash" id="dash"></div></div>
+<!-- STORE -->
+<div id="v-store" data-view hidden></div>
+</main>
+
+<footer class="site-foot" id="siteFooter">
+  <div class="wrap">EasyBuy — Pakistan-focused online store builder. COD, inventory, coupons, analytics and store tools in one dashboard.</div>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js">
+
+
+/* ---------- EasyBuy Stage 5: complete Shopify-style workspace ---------- */
+const S5={tab:'home',customerQ:'',domain:''};
+const S5TABS=[
+  ['home','⌂','Home'],['orders','▣','Orders'],['products','□','Products'],['customers','♙','Customers'],
+  ['analytics','◒','Analytics'],['discounts','%','Discounts'],['reviews','★','Reviews'],['marketing','✦','Marketing'],
+  ['online_store','◫','Online Store'],['finance','₨','Finance'],['apps','⊞','Apps'],['settings','⚙','Settings'],['admin','▣','Admin']
+];
+function s5Title(tab){return (S5TABS.find(x=>x[0]===tab)||['','',tab])[2]}
+function s5Sales(st){
+  const orders=MY.orders.filter(o=>o.status!=='Cancelled');
+  const revenue=orders.reduce((a,o)=>a+Number(o.total||0),0);
+  const delivered=orders.filter(o=>o.status==='Delivered').length;
+  const pending=orders.filter(o=>['New','Confirmed','Shipped'].includes(o.status)).length;
+  const customers=(ADV.extra.customers||[]).length;
+  return {orders,revenue,delivered,pending,customers};
+}
+function s5Side(st){
+  const groups=[['STORE',S5TABS.slice(0,4)],['ANALYZE',S5TABS.slice(4,7)],['GROW',S5TABS.slice(7,9)],['MANAGE',S5TABS.slice(9,12)]];
+  return groups.map(([g,items])=>`<div class="nav-group">${g}</div>${items.map(([id,ic,n])=>`<button class="${S5.tab===id?'active':''}" data-s5tab="${id}"><span>${ic}</span>${n}${id==='orders'&&MY.orders.filter(o=>o.status==='New').length?`<span class="mini-status" style="margin-left:auto">${MY.orders.filter(o=>o.status==='New').length}</span>`:''}</button>`).join('')}`).join('')+((ADV.extra.profile?.role==='admin')?`<div class="nav-group">PLATFORM</div><button class="${S5.tab==='admin'?'active':''}" data-s5tab="admin"><span>▣</span>Admin</button>`:'');
+}
+function s5Top(st){return `<div class="s5-topbar"><div><h1>${esc(s5Title(S5.tab))}</h1><p>${esc(st.name)} · EasyBuy merchant workspace</p></div><div class="s5-top-actions"><select id="storeSel" style="max-width:210px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><a class="btn" href="#/s/${esc(st.slug)}" target="_blank">View store</a><button class="btn" data-s5="refresh">↻</button></div></div>`}
+function s5Home(st){const m=s5Sales(st);const max=Math.max(1,...STATUSES.map(x=>MY.orders.filter(o=>o.status===x).length));return `<div class="s5-kpis"><div class="s5-kpi"><small>Total sales</small><strong>${money(m.revenue)}</strong></div><div class="s5-kpi"><small>Orders</small><strong>${m.orders.length}</strong></div><div class="s5-kpi"><small>Customers</small><strong>${m.customers}</strong></div><div class="s5-kpi"><small>Products</small><strong>${MY.products.length}</strong></div></div><div class="s5-grid2"><section class="s5-card"><h2>Store overview</h2><p class="fine">Your most important numbers at a glance.</p>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row"><span>${x}</span><div class="bar"><i style="width:${Math.round(n/max*100)}%"></i></div><b>${n}</b></div>`}).join('')}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="btn primary" data-s5tab="products">Add product</button><button class="btn" data-s5tab="online_store">Customize store</button></div></section><section class="s5-card"><h2>Recent orders</h2><div class="s5-list">${MY.orders.slice(0,6).map(o=>`<div class="s5-list-item"><div><b>#${o.order_no}</b> · ${esc(o.customer_name)}<div class="meta">${new Date(o.created_at).toLocaleDateString('en-PK')}</div></div><div style="text-align:right"><b>${money(o.total)}</b><br><span class="s5-tag">${esc(o.status)}</span></div></div>`).join('')||'<div class="s5-empty">No orders yet.</div>'}</div></section></div>`}
+function s5Customers(){const q=S5.customerQ.toLowerCase();const rows=(ADV.extra.customers||[]).filter(c=>(c.name+' '+c.phone+' '+c.city).toLowerCase().includes(q));return `<div class="s5-card"><div class="sf-tools"><div><h2>Customers</h2><p class="fine">Every buyer who has placed an order.</p></div><input class="search" id="s5CustomerSearch" value="${esc(S5.customerQ)}" placeholder="Search customers" style="max-width:330px;margin:0"></div><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Phone</th><th>City</th><th>Orders</th><th>Total spent</th></tr></thead><tbody>${rows.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('')||'<tr><td colspan="5">No customers found.</td></tr>'}</tbody></table></div></div>`}
+function s5Analytics(st){const m=s5Sales(st),city={};m.orders.forEach(o=>city[o.city]=(city[o.city]||0)+Number(o.total||0));const cities=Object.entries(city).sort((a,b)=>b[1]-a[1]).slice(0,8);const max=cities[0]?.[1]||1;return `<div class="s5-kpis"><div class="s5-kpi"><small>Gross sales</small><strong>${money(m.revenue)}</strong></div><div class="s5-kpi"><small>Average order</small><strong>${money(m.orders.length?Math.round(m.revenue/m.orders.length):0)}</strong></div><div class="s5-kpi"><small>Delivered</small><strong>${m.delivered}</strong></div><div class="s5-kpi"><small>Pending</small><strong>${m.pending}</strong></div></div><div class="s5-grid2"><section class="s5-card"><h2>Sales by city</h2>${cities.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}%"></i></div><b>${money(v)}</b></div>`).join('')||'<p class="fine">No sales yet.</p>'}</section><section class="s5-card"><h2>Inventory health</h2><div class="s5-list">${MY.products.slice(0,12).map(p=>`<div class="s5-list-item"><div><b>${esc(p.name)}</b><div class="meta">${esc(p.sku||'No SKU')}</div></div><span class="s5-tag">${p.stock>0?p.stock+' in stock':'Unlimited'}</span></div>`).join('')||'<div class="s5-empty">No products.</div>'}</div></section></div>`}
+function s5Discounts(){const rows=ADV.extra.coupons||[];return `<div class="s5-grid2"><section class="s5-card"><h2>Create discount</h2><p class="fine">Create percentage or fixed PKR discounts for your customers.</p><form id="s5CouponForm" class="advanced-form"><label>Code<input id="s5Code" required placeholder="SAVE10"></label><label>Type<select id="s5Type"><option value="percent">Percentage</option><option value="fixed">Fixed PKR</option></select></label><label>Value<input id="s5Value" type="number" min="1" required></label><label>Minimum order<input id="s5Min" type="number" min="0" value="0"></label><label>Usage limit<input id="s5Limit" type="number" min="0" value="0"></label><label>Expiry<input id="s5Expiry" type="date"></label><div class="full"><button class="btn primary">Create discount</button></div></form></section><section class="s5-card"><h2>Active discounts</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Code</th><th>Offer</th><th>Used</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'% off':money(c.discount_value)+' off'}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td><button class="btn small danger" data-s5coupon="${c.id}">Delete</button></td></tr>`).join('')||'<tr><td colspan="4">No discounts yet.</td></tr>'}</tbody></table></div></section></div>`}
+function s5Reviews(){const rows=ADV.extra.reviews||[];return `<div class="s5-card"><h2>Product reviews</h2><p class="fine">Approve or hide customer reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td>${r.approved?'Approved':'Pending'}</td><td><button class="btn small" data-s5review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('')||'<tr><td colspan="5">No reviews yet.</td></tr>'}</tbody></table></div></div>`}
+function s5Marketing(){return `<div class="s5-grid"><section class="s5-card"><h2>WhatsApp marketing</h2><p class="fine">Use your store WhatsApp number to follow up with customers and share offers.</p><button class="btn primary" data-s5="waCampaign">Create WhatsApp campaign</button></section><section class="s5-card"><h2>Meta / TikTok pixels</h2><p class="fine">Paste tracking IDs when you are ready to connect ads.</p><label>Meta Pixel ID<input id="metaPixel" placeholder="Optional"></label><label>TikTok Pixel ID<input id="tiktokPixel" placeholder="Optional"></label><button class="btn primary" data-s5="savePixels">Save tracking settings</button></section><section class="s5-card"><h2>Abandoned carts</h2><p class="fine">The storefront is prepared for cart recovery. Automated messaging needs a WhatsApp/SMS provider connection.</p><span class="s5-tag">Ready for integration</span></section></div>`}
+function s5StoreEditor(st){const theme=st.theme||'classic';return `<div class="s5-grid2"><section class="s5-card"><h2>Theme editor</h2><p class="fine">Customize the storefront without touching code.</p><label>Theme<select id="s5Theme"><option value="classic" ${theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${theme==='bold'?'selected':''}>Bold</option><option value="modern" ${theme==='modern'?'selected':''}>Modern</option></select></label><label>Store headline<input id="s5Tagline" value="${esc(st.tagline||'')}"></label><label>Homepage description<textarea id="s5Desc">${esc(st.description||'')}</textarea></label><fieldset><legend>Brand colour</legend><div class="swatches">${COLORS.map(c=>`<button type="button" class="sw" data-s5color="${c}" style="background:${c}" aria-pressed="${String(st.color).toLowerCase()===c.toLowerCase()}"></button>`).join('')}</div></fieldset><button class="btn primary" data-s5="saveTheme">Save theme</button></section><section class="s5-card"><h2>Live preview</h2><div class="s5-preview" style="--accent:${esc(st.color)};--on-accent:${ink(st.color)}"><div class="s5-preview-head"><b>${esc(st.name)}</b><span class="s5-tag">Cart 0</span></div><div class="s5-preview-hero"><h3>${esc(st.tagline||st.name)}</h3><p>Cash on Delivery across Pakistan</p></div><div class="s5-preview-grid">${MY.products.slice(0,3).map(p=>`<div class="s5-preview-product"><div class="ph">${p.image_url?`<img src="${esc(p.image_url)}" style="width:100%;height:100%;object-fit:cover" alt="">`:(CATS[st.category]||'🛍️')}</div><div class="pt"><b>${esc(p.name)}</b><br><strong>${money(p.price)}</strong></div></div>`).join('')||'<div class="s5-empty" style="grid-column:1/-1">Add products to preview them here.</div>'}</div></div></section></div><section class="s5-card" style="margin-top:14px"><h2>Domains</h2><p class="fine">Your EasyBuy URL is ready. A custom domain requires DNS routing at your hosting provider.</p><div class="s5-domain"><input id="s5Domain" placeholder="mystore.pk" value="${esc(S5.domain)}"><button class="btn" data-s5="saveDomain">Save domain request</button></div><p class="fine">Current: ${esc(location.href.split('#')[0])}#/s/${esc(st.slug)}</p></section>`}
+function s5Finance(st){const methods=Array.isArray(st.payment_methods)?st.payment_methods:['cod'];return `<div class="s5-grid2"><section class="s5-card"><h2>Payments</h2><p class="fine">Configure the methods you want to show at checkout.</p><label><input type="checkbox" id="s5Cod" ${methods.includes('cod')?'checked':''}> Cash on Delivery</label><label><input type="checkbox" id="s5Bank" ${methods.includes('bank')?'checked':''}> Bank transfer</label><label><input type="checkbox" id="s5Easy" ${methods.includes('easypaisa')?'checked':''}> Easypaisa</label><label><input type="checkbox" id="s5Jazz" ${methods.includes('jazzcash')?'checked':''}> JazzCash</label><label>Bank details<textarea id="s5BankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="s5EasyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="s5JazzNum" value="${esc(st.jazzcash_number||'')}"></label><button class="btn primary" data-s5="savePayments">Save payment settings</button></section><section class="s5-card"><h2>Shipping</h2><label>Shipping fee (PKR)<input id="s5ShipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (PKR)<input id="s5FreeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><button class="btn primary" data-s5="saveShipping">Save shipping</button><div class="admin-banner" style="margin-top:14px"><b>Courier integrations</b><br>Leopards, TCS, M&P and other courier APIs can be connected once merchant credentials/API access are available.</div></section></div>`}
+function s5Apps(){const apps=[['WhatsApp','Orders, support and campaigns'],['Google Analytics','Store traffic and events'],['Meta Pixel','Facebook/Instagram ads tracking'],['TikTok Pixel','TikTok ads tracking'],['Courier API','Labels and shipment tracking'],['Payment gateway','Online payments']];return `<div class="s5-grid">${apps.map(a=>`<section class="s5-card"><h2>${a[0]}</h2><p class="fine">${a[1]}</p><span class="s5-tag">Connect</span><button class="btn" style="margin-top:12px" data-s5app="${esc(a[0])}">Configure</button></section>`).join('')}</div>`}
+async function s5Settings(st){return `<div class="s5-grid2">${settingsPanel(st)}<section class="s5-card"><h2>Store policies</h2><label>Return & refund policy<textarea id="s5Return" placeholder="Write your policy..."></textarea></label><label>Privacy policy<textarea id="s5Privacy" placeholder="Write your privacy policy..."></textarea></label><label>Terms of service<textarea id="s5Terms" placeholder="Write your terms..."></textarea></label><button class="btn primary" data-s5="savePolicies">Save policies</button></section></div>`}
+async function s5Admin(){return await adminPanel()}
+async function renderDash(){
+  const el=$('#dash'),st=curS();
+  if(!st){el.innerHTML='<div class="empty"><h2>No stores yet</h2><p>Create your first store and it will show up here.</p><a class="btn primary" href="#/" id="goCreate">Create a store</a></div>';return}
+  await loadAdvanced();
+  if(S5.tab==='admin'&&ADV.extra.profile?.role!=='admin')S5.tab='home';
+  const content= S5.tab==='home'?s5Home(st):S5.tab==='orders'?ordersPanel(st):S5.tab==='products'?productsPanel(st):S5.tab==='customers'?s5Customers():S5.tab==='analytics'?s5Analytics(st):S5.tab==='discounts'?s5Discounts():S5.tab==='reviews'?s5Reviews():S5.tab==='marketing'?s5Marketing():S5.tab==='online_store'?s5StoreEditor(st):S5.tab==='finance'?s5Finance(st):S5.tab==='apps'?s5Apps():S5.tab==='settings'?await s5Settings(st):await s5Admin();
+  el.innerHTML=`<div class="s5-shell"><aside class="s5-side"><div class="s5-brand"><span class="dot">E</span><div><b>EasyBuy</b><small>${esc(st.name)}</small></div></div><div class="s5-nav">${s5Side(st)}</div><div class="side-help">Shopify-style workspace · Pakistan-first commerce.</div></aside><div class="s5-main"><div class="s5-mobile-nav">${S5TABS.filter(x=>x[0]!=='admin'||ADV.extra.profile?.role==='admin').map(x=>`<button class="btn small ${S5.tab===x[0]?'primary':''}" data-s5tab="${x[0]}">${x[2]}</button>`).join('')}</div>${s5Top(st)}${content}</div></div>`;
+}
+addEventListener('click',async e=>{
+  const tab=e.target.closest('[data-s5tab]');
+  if(tab){S5.tab=tab.dataset.s5tab;D.form=null;D.file=null;await renderDash();return}
+  const act=e.target.closest('[data-s5]');if(act){const a=act.dataset.s5;const st=curS();
+    if(a==='refresh'){await loadStoreData();await loadAdvanced();await renderDash();toast('Updated');return}
+    if(a==='saveTheme'){await busy(act,async()=>{const r=await sb.from('stores').update({theme:$('#s5Theme').value,tagline:$('#s5Tagline').value.trim(),description:$('#s5Desc').value.trim(),color:st.color}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await renderDash();toast('Theme saved')});return}
+    if(a==='saveDomain'){S5.domain=$('#s5Domain').value.trim();toast(S5.domain?'Domain request saved locally. DNS connection still needs hosting setup.':'Enter a domain first');return}
+    if(a==='savePayments'){await busy(act,async()=>{const methods=['cod','bank','easypaisa','jazzcash'].filter(x=>$('#s5'+({cod:'Cod',bank:'Bank',easypaisa:'Easy',jazzcash:'Jazz'})[x]).checked);const r=await sb.from('stores').update({payment_methods:methods,bank_details:$('#s5BankDetails').value.trim(),easypaisa_number:$('#s5EasyNum').value.trim(),jazzcash_number:$('#s5JazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);toast('Payment settings saved')});return}
+    if(a==='saveShipping'){await busy(act,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#s5ShipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#s5FreeShip').value,10)||0)}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);toast('Shipping saved')});return}
+    if(a==='savePixels'){lsSet('eb.pixels.'+st.id,JSON.stringify({meta:$('#metaPixel').value.trim(),tiktok:$('#tiktokPixel').value.trim()}));toast('Tracking settings saved');return}
+    if(a==='waCampaign'){const n=(ADV.extra.customers||[]).filter(c=>c.phone).slice(0,50);if(!n.length){toast('No customers yet');return}const msg=encodeURIComponent('Assalam o Alaikum! New offer from '+st.name+'.');window.open('https://wa.me/?text='+msg,'_blank');return}
+    if(a==='savePolicies'){toast('Policy editor ready. Add the policy tables from schema_stage5.sql to persist them.');return}
+  }
+  const color=e.target.closest('[data-s5color]');if(color){document.querySelectorAll('[data-s5color]').forEach(x=>x.setAttribute('aria-pressed',x===color));const st=curS();if(st)st.color=color.dataset.s5color;const p=$('.s5-preview');if(p){p.style.setProperty('--accent',color.dataset.s5color);p.style.setProperty('--on-accent',ink(color.dataset.s5color))}return}
+  const del=e.target.closest('[data-s5coupon]');if(del){await busy(del,async()=>{const r=await sb.from('coupons').delete().eq('id',del.dataset.s5coupon);if(r.error)throw r.error;await loadAdvanced();await renderDash();toast('Discount deleted')});return}
+  const rv=e.target.closest('[data-s5review]');if(rv){await busy(rv,async()=>{const r=await sb.from('reviews').update({approved:rv.dataset.approved==='true'}).eq('id',rv.dataset.s5review);if(r.error)throw r.error;await loadAdvanced();await renderDash();toast('Review updated')});return}
+  const app=e.target.closest('[data-s5app]');if(app){toast(app.dataset.s5app+' integration is ready for provider credentials/API connection.');return}
+});
+addEventListener('input',e=>{if(e.target.id==='s5CustomerSearch'){S5.customerQ=e.target.value;const st=curS();renderDash()}});
+addEventListener('change',async e=>{if(e.target.id==='storeSel'){MY.active=e.target.value;S5.tab='home';await loadStoreData();await renderDash()}});
+addEventListener('submit',async e=>{
+  if(e.target.id==='s5CouponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#s5Code').value.trim().toUpperCase(),type=$('#s5Type').value,val=Math.max(1,parseInt($('#s5Value').value,10)||0),min=Math.max(0,parseInt($('#s5Min').value,10)||0),lim=Math.max(0,parseInt($('#s5Limit').value,10)||0),ex=$('#s5Expiry').value?new Date($('#s5Expiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();await renderDash();toast('Discount created')});return}
+});
+
+</script>
+<script src="config.js"></script>
+<script>
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
+const uid=()=>Math.random().toString(36).slice(2,8);
+const CATS={Pets:'🐾',Fashion:'👗',Electronics:'🎧',Home:'🏠',Beauty:'💄',Other:'🛍️'};
+const COLORS=['#0a7d55','#1f6f9f','#d8452e','#7a4dd8','#c98a00','#c2185b','#26332e'];
+const STATUSES=['New','Confirmed','Shipped','Delivered','Cancelled'];
+const slugify=s=>{let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24).replace(/-+$/,'');if(b.length<3)b=(b+'-shop').replace(/^-/,'');return b};
+const slugPreview=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,24)||'yourstore';
+function ink(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#10231d':'#ffffff'}
+function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('0'))d='92'+d.slice(1);return d}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200)}
+const ok=r=>{if(r.error)throw r.error;return r.data};
+async function busy(btn,fn){if(btn)btn.disabled=true;try{return await fn()}catch(e){console.error(e);toast(e.message||'Something went wrong')}finally{if(btn)btn.disabled=false}}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+
+/* ---------- supabase ---------- */
+const CFG=window.EASYBUY_CONFIG||{};
+const configured=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/^PASTE/.test(CFG.SUPABASE_URL)&&window.supabase);
+const sb=configured?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
+let USER=null;
+
+/* ---------- router ---------- */
+function route(){
+  const parts=(location.hash||'#/').split('/');
+  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':'home';
+  if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
+  $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
+  $('#siteHeader').hidden=v==='store';
+  $('#siteFooter').hidden=v==='store';
+  $$('.nav-links a[data-nav]').forEach(a=>a.classList.toggle('on',a.dataset.nav===v));
+  if(v==='home')renderHome();
+  if(v==='login')renderLogin();
+  if(v==='dashboard')loadDash();
+  if(v==='store')renderStore(parts[2]);
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
+
+/* ---------- auth ---------- */
+const AUTH={mode:'signup',note:''};
+function renderLogin(){
+  const su=AUTH.mode==='signup',pend=readPending();
+  $('#v-login').innerHTML=`<div class="wrap auth"><form class="builder" id="authForm">
+    <h2>${su?'Create your seller account':'Log in'}</h2>
+    <p class="fine" style="margin:0 0 16px">${esc(pend?'Aap ka store "'+pend.name+'" account banate hi ban jayega.':AUTH.note||'Email aur password se account banta hai.')}</p>
+    <label>Email<input id="aEmail" type="email" autocomplete="email" required></label>
+    <label>Password (6+ characters)<input id="aPass" type="password" minlength="6" autocomplete="${su?'new-password':'current-password'}" required></label>
+    <button class="btn primary big" type="submit">${su?'Create account':'Log in'}</button>
+    <p class="fine"><button class="linkbtn" type="button" data-auth="toggle">${su?'Already have an account? Log in':'New here? Create an account'}</button></p>
+    <p class="fine" id="aMsg" role="alert"></p></form></div>`;
+}
+function readPending(){try{return JSON.parse(lsGet('eb.pending')||'null')}catch(e){return null}}
+async function afterAuth(){
+  AUTH.note='';
+  const pend=readPending();
+  if(pend){lsDel('eb.pending');try{const st=await createStore(pend);MY.active=st.id;toast('Store ban gaya. Ab pehla product add karo.');D.tab='products'}catch(e){toast(e.message)}}
+  location.hash='#/dashboard';
+  if(location.hash==='#/dashboard')route();
+}
+async function createStore(d){
+  let base=slugify(d.name);
+  for(let i=0;i<5;i++){
+    const slug=i===0?base:(base.slice(0,24)+'-'+uid().slice(0,3));
+    const r=await sb.from('stores').insert({slug,name:d.name,category:d.cat,color:d.color,whatsapp:d.wa||'',tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.'}).select().single();
+    if(!r.error)return r.data;
+    if(r.error.code!=='23505')throw r.error;
+  }
+  throw new Error('Could not find a free store link. Try a different name.');
+}
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='authForm')return;e.preventDefault();
+  if(!sb){toast('Add your Supabase keys in config.js first');return}
+  const email=$('#aEmail').value.trim(),password=$('#aPass').value,msg=$('#aMsg');
+  msg.textContent='';
+  await busy(e.target.querySelector('button[type=submit]'),async()=>{
+    if(AUTH.mode==='signup'){
+      const r=await sb.auth.signUp({email,password});
+      if(r.error){msg.textContent=r.error.message;return}
+      if(r.data.session){USER=r.data.session.user;paintNav();await afterAuth()}
+      else msg.textContent='Account ban gaya. Email mein confirmation link aaya hoga, usay kholo aur phir Log in karo.';
+    }else{
+      const r=await sb.auth.signInWithPassword({email,password});
+      if(r.error){msg.textContent=r.error.message;return}
+      USER=r.data.user;paintNav();await afterAuth();
+    }
+  });
+});
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-auth]');
+  if(t&&t.dataset.auth==='toggle'){AUTH.mode=AUTH.mode==='signup'?'login':'signup';renderLogin()}
+  if(e.target.id==='navAuth'){
+    if(USER){await sb.auth.signOut();USER=null;paintNav();toast('Logged out');location.hash='#/';route()}
+    else{AUTH.mode='login';location.hash='#/login';route()}
+  }
+});
+
+/* ---------- home ---------- */
+const B={cat:'Pets',color:COLORS[0]};
+function initBuilder(){
+  $('#bCats').innerHTML=Object.keys(CATS).map(c=>`<button type="button" class="chip" data-cat="${c}" aria-pressed="${c===B.cat}">${CATS[c]} ${c}</button>`).join('');
+  $('#bColors').innerHTML=COLORS.map(c=>`<button type="button" class="sw" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===B.color}"></button>`).join('');
+  $('#bCats').addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(!b)return;B.cat=b.dataset.cat;$$('#bCats .chip').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  $('#bColors').addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b)return;B.color=b.dataset.color;$$('#bColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  $('#bName').addEventListener('input',preview);
+  $('#builder').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const name=$('#bName').value.trim();
+    if(!name){toast('Pehle store ka naam likho');$('#bName').focus();return}
+    const draft={name,cat:B.cat,color:B.color,wa:$('#bWa').value.trim()};
+    if(!sb){toast('Add your Supabase keys in config.js first');return}
+    if(!USER){lsSet('eb.pending',JSON.stringify(draft));AUTH.mode='signup';location.hash='#/login';route();return}
+    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='products';toast('Store ban gaya. Ab pehla product add karo.');location.hash='#/dashboard';route()});
+  });
+  $('#navCreate').addEventListener('click',e=>{
+    if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
+  });
+  preview();
+}
+function preview(){
+  const name=$('#bName').value.trim()||'Your store';
+  const f=$('#frame');f.style.setProperty('--accent',B.color);f.style.setProperty('--on-accent',ink(B.color));
+  $('#pvName').textContent=name;$('#pvBand').textContent=name;
+  $('#pvUrl').textContent=slugPreview($('#bName').value)+'.easybuy.pk';
+  const e=CATS[B.cat],prices=['1,499','2,999','799'];
+  $('#pvGrid').innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
+}
+async function renderHome(){
+  const box=$('#storeList');
+  if(!sb){box.innerHTML='<p class="sub">Supabase keys add karne ke baad yahan live stores dikhenge.</p>';return}
+  try{
+    const list=ok(await sb.from('stores').select('slug,name,category,color').order('created_at',{ascending:false}).limit(12));
+    box.innerHTML=list.length?list.map(s=>`
+      <div class="store-row"><div class="store-dot" style="background:${esc(s.color)};color:${ink(s.color)}">${CATS[s.category]||'🛍️'}</div>
+      <div><b>${esc(s.name)}</b><small>${esc(s.category)}</small></div>
+      <a class="btn small" href="#/s/${esc(s.slug)}">Visit store</a></div>`).join('')
+      :'<p class="sub">Abhi koi store nahi bana. Pehla store aap ka ho sakta hai.</p>';
+  }catch(e){box.innerHTML='<p class="sub">Stores load nahi ho sake: '+esc(e.message)+'</p>'}
+}
+
+/* ---------- dashboard ---------- */
+const MY={stores:[],active:null,products:[],orders:[]};
+const D={tab:'orders',form:null,file:null};
+const curS=()=>MY.stores.find(s=>s.id===MY.active);
+async function loadDash(){
+  $('#dash').innerHTML='<div class="empty">Loading your store...</div>';
+  try{
+    MY.stores=ok(await sb.from('stores').select('*').eq('owner_id',USER.id).order('created_at'));
+    if(!curS())MY.active=MY.stores[0]?MY.stores[0].id:null;
+    await loadStoreData();
+  }catch(e){toast(e.message)}
+  renderDash();
+}
+async function loadStoreData(){
+  MY.products=[];MY.orders=[];
+  if(!MY.active)return;
+  const [p,o]=await Promise.all([
+    sb.from('products').select('*').eq('store_id',MY.active).order('created_at'),
+    sb.from('orders').select('*').eq('store_id',MY.active).order('created_at',{ascending:false})]);
+  MY.products=ok(p);MY.orders=ok(o);
+}
+function renderDash(){
+  const el=$('#dash'),st=curS();
+  if(!st){el.innerHTML='<div class="empty"><h2>No stores yet</h2><p>Create your first store and it will show up here.</p><a class="btn primary" href="#/" id="goCreate">Create a store</a></div>';return}
+  const live=MY.orders.filter(o=>o.status!=='Cancelled');
+  const rev=live.reduce((a,o)=>a+o.total,0),fresh=MY.orders.filter(o=>o.status==='New').length;
+  const active=MY.products.filter(p=>p.is_active).length;
+  el.innerHTML=`<div class="dash-shell">
+    <aside class="dash-side">
+      <div class="side-store"><small style="color:var(--muted)">Your store</small><b>${esc(st.name)}</b><small>${esc(st.category)}</small></div>
+      <div class="side-nav">
+        <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
+        <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
+        <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
+      </div>
+      <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
+    </aside>
+    <div class="dash-main">
+      <div class="mobile-dash-nav">${['orders','products','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      <div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):settingsPanel(st)}
+    </div>
+  </div>`;
+}
+function ordersPanel(st){
+  if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
+  return `<div class="panel-box">${MY.orders.map(o=>`
+    <article class="order">
+      <div class="order-top"><strong>Order #${o.order_no}</strong><span class="pill st-${o.status}">${o.status}</span><time>${new Date(o.created_at).toLocaleString('en-PK',{dateStyle:'medium',timeStyle:'short'})}</time></div>
+      <p><b style="color:var(--ink)">${esc(o.customer_name)}</b>, ${esc(o.customer_phone)}</p>
+      <p>${esc(o.address)}, ${esc(o.city)}</p>
+      <ul>${o.items.map(i=>`<li>${esc(i.name)} x${i.qty}</li>`).join('')}</ul>
+      <div class="order-foot"><strong>${money(o.total)} cash on delivery</strong>
+        <select data-status="${o.id}" aria-label="Order status">${STATUSES.map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select>
+        <a class="btn small" target="_blank" rel="noopener" href="https://wa.me/${waNum(o.customer_phone)}?text=${encodeURIComponent('Assalam o Alaikum '+o.customer_name+', this is '+st.name+' about your order #'+o.order_no+'.')}">Message customer</a>
+      </div>
+    </article>`).join('')}</div>`;
+}
+function productsPanel(st){
+  const f=D.form;
+  const form=f?`<form class="dashboard-card" id="pForm" style="margin-bottom:18px"><div class="row-head"><h2>${f.id?'Edit product':'Add product'}</h2><button class="btn small" type="button" data-act="cancelform">Close</button></div>
+    <label>Product name<input id="pName" maxlength="120" required value="${esc(f.name||'')}" placeholder="e.g. Wireless Earbuds"></label>
+    <div class="two"><label>Price (Rs.)<input id="pPrice" type="number" min="1" inputmode="numeric" required value="${esc(f.price||'')}"></label><label>Compare-at price (Rs.)<input id="pOld" type="number" min="0" inputmode="numeric" value="${esc(f.old_price||'')}"></label></div>
+    <div class="two"><label>Category<input id="pCat" maxlength="30" placeholder="Electronics, Fashion..." value="${esc(f.category||'')}"></label><label>Visibility<select id="pActive"><option value="true"${f.is_active!==false?' selected':''}>Visible in store</option><option value="false"${f.is_active===false?' selected':''}>Hidden</option></select></label></div>
+    <div class="two"><label>SKU<input id="pSku" maxlength="40" value="${esc(f.sku||'')}" placeholder="Optional SKU"></label><label>Stock (0 = unlimited)<input id="pStock" type="number" min="0" value="${esc(f.stock||0)}"></label></div>
+    <label>Variants <span class="fine" style="display:inline">(one per line, e.g. Red | Small | 799)</span><textarea id="pVariants" placeholder="Red | Small | 799\nBlue | Medium | 849">${esc((f.variants||[]).map(v=>[v.name||'',v.option||'',v.price||''].filter(Boolean).join(' | ')).join('\n'))}</textarea></label>
+    <label>Description<textarea id="pDesc" maxlength="240" placeholder="Short product description">${esc(f.description||'')}</textarea></label>
+    <div class="img-pick"><div class="thumb" id="pThumb">${f.image_url?`<img src="${esc(f.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
+    <div style="display:flex;gap:10px"><button class="btn primary" type="submit">Save product</button><button class="btn" type="button" data-act="cancelform">Cancel</button></div>
+  </form>`:'';
+  const list=MY.products.length?`<div class="dashboard-card"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="dashboard-card empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
+  return form+list;
+}
+function settingsPanel(st){
+  return `<form class="panel-box" id="sForm">
+    <div class="row-head"><h2>Store settings</h2></div>
+    <div class="two"><label>Store name<input id="sName" maxlength="60" required value="${esc(st.name)}"></label>
+    <label>WhatsApp number<input id="sWa" inputmode="tel" value="${esc(st.whatsapp)}"></label></div>
+    <label>Tagline shown on your store<input id="sTag" maxlength="120" value="${esc(st.tagline||'')}"></label>
+    <label>Store description<textarea id="sDesc" maxlength="500">${esc(st.description||'')}</textarea></label>
+    <fieldset><legend>Store colour</legend><div class="swatches" id="sColors">${COLORS.map(c=>`<button type="button" class="sw" data-scolor="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c.toLowerCase()===st.color.toLowerCase()}"></button>`).join('')}</div></fieldset>
+    <p class="fine" style="margin:0 0 14px">Store link: ${esc(location.href.split('#')[0])}#/s/${esc(st.slug)}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save settings</button><button class="btn danger" type="button" data-act="delstore">Delete this store</button></div>
+  </form>`;
+}
+function toBlob(file,cb){
+  const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>cb(b),'image/jpeg',.82)};im.onerror=()=>toast('That file is not an image');im.src=r.result};
+  r.readAsDataURL(file);
+}
+async function uploadImage(blob){
+  const path=USER.id+'/'+Date.now()+'-'+uid()+'.jpg';
+  const r=await sb.storage.from('product-images').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});
+  if(r.error)throw r.error;
+  return sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+}
+function bindDash(){
+  const el=$('#v-dashboard');
+  el.addEventListener('click',async e=>{
+    const st=curS();
+    const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
+    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50);return}
+    if(!st)return;
+    const ed=e.target.closest('[data-edit]');if(ed){D.form={...MY.products.find(x=>x.id===ed.dataset.edit)};D.file=null;renderDash();$('#pForm')&&$('#pForm').scrollIntoView();return}
+    const dl=e.target.closest('[data-del]');
+    if(dl){const p=MY.products.find(x=>x.id===dl.dataset.del);
+      if(p&&confirm('Delete "'+p.name+'"?'))await busy(dl,async()=>{ok(await sb.from('products').delete().eq('id',p.id));await loadStoreData();renderDash();toast('Product deleted')});return}
+    const sc=e.target.closest('[data-scolor]');if(sc){D.color=sc.dataset.scolor;$$('#sColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===sc));return}
+    const a=e.target.closest('[data-act]');if(!a)return;
+    const act=a.dataset.act;
+    if(act==='addproduct'){D.form={};D.file=null;renderDash();$('#pName')&&$('#pName').focus()}
+    if(act==='cancelform'){D.form=null;D.file=null;renderDash()}
+    if(act==='refresh')await busy(a,async()=>{await loadStoreData();renderDash();toast('Updated')});
+    if(act==='newstore'){location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50)}
+    if(act==='copy'){const url=location.href.split('#')[0]+'#/s/'+st.slug;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Store link copied'),()=>toast(url))}
+    if(act==='delstore'&&confirm('Delete "'+st.name+'" with all its products and orders? This cannot be undone.'))
+      await busy(a,async()=>{ok(await sb.from('stores').delete().eq('id',st.id));MY.active=null;await loadDash();toast('Store deleted')});
+  });
+  el.addEventListener('change',async e=>{
+    if(e.target.id==='storeSel'){MY.active=e.target.value;D.form=null;await loadStoreData();renderDash();return}
+    if(e.target.dataset.status){const o=MY.orders.find(x=>x.id===e.target.dataset.status);
+      if(o)await busy(e.target,async()=>{ok(await sb.from('orders').update({status:e.target.value}).eq('id',o.id));o.status=e.target.value;renderDash();toast('Order #'+o.order_no+' marked '+o.status)});return}
+    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="">'})}
+  });
+  el.addEventListener('submit',async e=>{
+    e.preventDefault();const st=curS();const btn=e.submitter;
+    if(e.target.id==='pForm'){
+      const price=parseInt($('#pPrice').value,10);
+      if(!$('#pName').value.trim()||!(price>0)){toast('Add a name and a price');return}
+      await busy(btn,async()=>{
+        let image_url=D.form.image_url||'';
+        if(D.file)image_url=await uploadImage(D.file);
+        const variants=$('#pVariants').value.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split('|').map(v=>v.trim());return {name:a[0]||'',option:a[1]||'',price:parseInt(a[2],10)||price}}); const row={store_id:st.id,name:$('#pName').value.trim(),price,old_price:parseInt($('#pOld').value,10)||0,category:$('#pCat').value.trim(),description:$('#pDesc').value.trim(),image_url,is_active:$('#pActive').value==='true',sku:$('#pSku').value.trim(),stock:Math.max(0,parseInt($('#pStock').value,10)||0),variants};
+        ok(D.form.id?await sb.from('products').update(row).eq('id',D.form.id):await sb.from('products').insert(row));
+        D.form=null;D.file=null;await loadStoreData();renderDash();toast('Product saved');
+      });
+    }
+    if(e.target.id==='sForm'){
+      await busy(btn,async()=>{
+        const upd={name:$('#sName').value.trim()||st.name,whatsapp:$('#sWa').value.trim(),tagline:$('#sTag').value.trim(),description:$('#sDesc').value.trim()};
+        if(D.color)upd.color=D.color;
+        ok(await sb.from('stores').update(upd).eq('id',st.id));
+        D.color=null;await loadDash();toast('Settings saved');
+      });
+    }
+  });
+}
+
+/* ---------- storefront ---------- */
+let SF={store:null,products:[],q:''};
+const cartKey=()=>'eb.cart.'+SF.store.id;
+function getCart(){try{return JSON.parse(lsGet(cartKey())||'[]')}catch(e){return[]}}
+function setCart(c){lsSet(cartKey(),JSON.stringify(c))}
+async function renderStore(slug){
+  const el=$('#v-store');
+  el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
+  let st=null,prods=[];
+  try{
+    if(!sb)throw new Error('Supabase keys are missing in config.js');
+    st=ok(await sb.from('stores').select('*').eq('slug',slug||'').maybeSingle());
+    if(st)prods=ok(await sb.from('products').select('*').eq('store_id',st.id).eq('is_active',true).order('created_at'));
+  }catch(e){el.innerHTML='<div class="wrap empty" style="padding-top:80px"><h2>Could not load this store</h2><p>'+esc(e.message)+'</p><a class="btn primary" href="#/">Back to EasyBuy</a></div>';return}
+  if(!st){el.innerHTML='<div class="wrap empty" style="padding-top:80px"><h2>Store not found</h2><p>Check the link, or ask the seller to send it again.</p><a class="btn primary" href="#/">Back to EasyBuy</a></div>';return}
+  SF={store:st,products:prods,q:'',cat:''};
+  document.title=st.name+' on EasyBuy';
+  el.style.setProperty('--accent',st.color);el.style.setProperty('--on-accent',ink(st.color));
+  el.innerHTML=`
+  <div class="eb-bar">You are viewing ${esc(st.name)} on EasyBuy.<a href="#/dashboard">Seller dashboard</a><a href="#/">EasyBuy home</a></div>
+  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><button class="btn accent" data-sf="opencart">Cart <span id="sfCount">0</span></button></div></header>
+  <section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(st.tagline||'')}</p>
+    <div class="sf-trust"><span>Cash on Delivery</span><span>Delivery across Pakistan</span><span>WhatsApp support</span></div></div></section>
+  <div class="wrap sf-main">
+    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products">
+    <div class="sf-tools"><div class="cat-filter" id="sfCats"></div></div><div class="grid" id="sfGrid"></div>
+  </div>
+  <footer class="sf-foot"><div class="wrap">Store powered by EasyBuy. Orders are placed as Cash on Delivery.</div></footer>
+  <div class="drawer" id="sfDrawer"><aside class="sheet" role="dialog" aria-label="Your cart">
+    <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart" aria-label="Close cart">Close</button></div>
+    <div id="sfItems"></div>
+    <form id="sfForm" style="margin-top:18px">
+      <h3 style="font-size:19px;margin-bottom:10px">Delivery details</h3>
+      <label>Full name<input id="cName" autocomplete="name" required></label>
+      <label>Phone<input id="cPhone" inputmode="tel" autocomplete="tel" placeholder="03XXXXXXXXX" required></label>
+      <label>City<input id="cCity" autocomplete="address-level2" required></label>
+      <label>Full address<input id="cAddr" autocomplete="street-address" required></label>
+      <label>Coupon code (optional)<input id="cCoupon" autocomplete="off" placeholder="e.g. SAVE10"></label>
+      <p class="fine" id="couponMsg"></p>
+      <button class="btn accent big" type="submit">Place order, pay on delivery</button>
+      <a class="fine" href="#/track" data-track-store style="display:block;margin-top:12px">Track an existing order</a>
+    </form>
+  </aside></div>
+  <div class="modal" id="sfDone"><div class="box"><h2 id="doneTitle">Order placed</h2><p id="doneText"></p>
+    <a class="btn primary" id="doneWa" target="_blank" rel="noopener" href="#">Send order on WhatsApp</a>
+    <button class="btn" data-sf="closedone">Continue shopping</button></div></div>
+  <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div class="product-modal-inner"><div class="product-modal-pic" id="pmPic"></div><div><span class="badge-sale" id="pmBadge" hidden>SALE</span><h2 id="pmName" style="margin-top:10px"></h2><div class="price" id="pmPrice"></div><p id="pmDesc" class="fine" style="font-size:15px;line-height:1.7"></p><button class="btn accent big buy" id="pmAdd">Add to cart</button></div></div></div></div>`;
+  drawGrid();drawCart();
+}
+function drawGrid(){
+  const st=SF.store,q=SF.q.toLowerCase();
+  const cats=[...new Set(SF.products.map(p=>p.category).filter(Boolean))];
+  const cf=$('#sfCats'); if(cf)cf.innerHTML=`<button class="active" data-catfilter="">All</button>`+cats.map(c=>`<button data-catfilter="${esc(c)}">${esc(c)}</button>`).join('');
+  const activeCat=SF.cat||'';
+  if(cf)cf.querySelectorAll('[data-catfilter]').forEach(b=>b.classList.toggle('active',b.dataset.catfilter===activeCat));
+  const list=SF.products.filter(p=>(!activeCat||p.category===activeCat)&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(q));
+  $('#sfGrid').innerHTML=list.map(p=>`<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button>
+    <div class="body">${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3><div class="desc">${esc(p.description||'')}</div>
+    <div class="price">${money(p.price)}${p.old_price>p.price?`<s>${money(p.old_price)}</s>`:''}</div>
+    <button class="btn accent" data-add="${p.id}">Add to cart</button></div></article>`).join('')
+    ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
+}
+function drawCart(){
+  const c=getCart().filter(i=>SF.products.some(p=>p.id===i.id));let total=0;
+  $('#sfCount').textContent=c.reduce((a,b)=>a+b.qty,0);
+  if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfForm').hidden=true;return}
+  $('#sfForm').hidden=false;
+  $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);total+=p.price*i.qty;
+    return `<div class="ci"><div><b>${esc(p.name)}</b><br><small>${money(p.price)} x ${i.qty}</small></div><div class="qty"><button data-chg="${p.id}" data-d="-1" aria-label="Remove one">−</button>${i.qty}<button data-chg="${p.id}" data-d="1" aria-label="Add one">+</button></div></div>`}).join('')
+    +`<div class="total"><span>Total</span><span>${money(total)}</span></div>`;
+}
+function bindStore(){
+  const el=$('#v-store');
+  el.addEventListener('input',e=>{if(e.target.id==='sfSearch'){SF.q=e.target.value;drawGrid()}});
+  el.addEventListener('click',e=>{
+    if(!SF.store)return;
+    const ad=e.target.closest('[data-add]');
+    if(ad){const c=getCart(),x=c.find(i=>i.id===ad.dataset.add);x?x.qty++:c.push({id:ad.dataset.add,qty:1});setCart(c);drawCart();if(ad.id==='pmAdd')$('#sfProduct').classList.remove('open');else $('#sfDrawer').classList.add('open');return}
+    const ch=e.target.closest('[data-chg]');
+    if(ch){let c=getCart();const x=c.find(i=>i.id===ch.dataset.chg);if(x){x.qty+=parseInt(ch.dataset.d,10);if(x.qty<=0)c=c.filter(i=>i!==x)}setCart(c);drawCart();return}
+    const cat=e.target.closest('[data-catfilter]'); if(cat){SF.cat=cat.dataset.catfilter;drawGrid();return}
+    const pr=e.target.closest('[data-product]'); if(pr){const p=SF.products.find(x=>x.id===pr.dataset.product);if(p){$('#pmName').textContent=p.name;$('#pmDesc').textContent=p.description||'No description available.';$('#pmPrice').innerHTML=money(p.price)+(p.old_price>p.price?`<s>${money(p.old_price)}</s>`:'');$('#pmBadge').hidden=!(p.old_price>p.price);$('#pmPic').innerHTML=p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:(CATS[SF.store.category]||'🛍️');$('#pmAdd').dataset.add=p.id;$('#sfProduct').classList.add('open')}return}
+    const a=e.target.closest('[data-sf]');
+    if(a){const k=a.dataset.sf;
+      if(k==='opencart')$('#sfDrawer').classList.add('open');
+      if(k==='closecart')$('#sfDrawer').classList.remove('open');
+      if(k==='closedone')$('#sfDone').classList.remove('open');return}
+    if(e.target.id==='sfDrawer')$('#sfDrawer').classList.remove('open');
+  });
+  el.addEventListener('submit',async e=>{
+    if(e.target.id!=='sfForm')return;e.preventDefault();
+    const st=SF.store,c=getCart().filter(i=>SF.products.some(p=>p.id===i.id));if(!c.length)return;
+    const name=$('#cName').value.trim(),phone=$('#cPhone').value.trim(),city=$('#cCity').value.trim(),address=$('#cAddr').value.trim();
+    if(!/^(92|0)?3\d{9}$/.test(phone.replace(/\D/g,''))){toast('Enter a Pakistani mobile number like 03XXXXXXXXX');return}
+    await busy(e.submitter,async()=>{
+      const res=await sb.rpc('place_order',{p_store:st.id,p_name:name,p_phone:phone,p_city:city,p_address:address,p_items:c.map(i=>({product_id:i.id,qty:i.qty})),p_coupon:$('#cCoupon')?.value.trim()||''});
+      const row=ok(res)[0];
+      const items=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);return p.name+' x'+i.qty}).join(', ');
+      setCart([]);drawCart();$('#sfDrawer').classList.remove('open');e.target.reset();
+      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}\nItems: ${items}\nDiscount: ${money(row.o_discount||0)}\nShipping: ${money(row.o_shipping||0)}\nTotal: ${money(row.o_total)} (Cash on Delivery)`;
+      $('#doneTitle').textContent='Order #'+row.o_no+' placed';
+      $('#doneText').textContent='Please keep '+money(row.o_total)+' ready. You pay the rider in cash when the parcel arrives.';
+      $('#doneWa').href='https://wa.me/'+waNum(st.whatsapp)+'?text='+encodeURIComponent(msg);
+      $('#sfDone').classList.add('open');
+    });
+  });
+}
+
+/* ---------- start ---------- */
+(async function init(){
+  initBuilder();bindDash();bindStore();
+  if(!configured)$('#setup').hidden=false;
+  else{
+    try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
+    sb.auth.onAuthStateChange((_e,s)=>{USER=s?s.user:null;paintNav()});
+  }
+  paintNav();route();
+})();
+/* ---------- Stage 4/5 advanced layer ---------- */
+const ADV={extra:{customers:[],coupons:[],reviews:[],profile:null}};
+async function loadAdvanced(){
+  if(!sb||!USER||!MY.active)return;
+  const [cu,co,re,pr]=await Promise.all([
+    sb.from('customers').select('*').eq('store_id',MY.active).order('updated_at',{ascending:false}).limit(200),
+    sb.from('coupons').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}),
+    sb.from('reviews').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}).limit(200),
+    sb.from('profiles').select('*').eq('id',USER.id).maybeSingle()
+  ]);
+  ADV.extra.customers=cu.error?[]:cu.data||[]; ADV.extra.coupons=co.error?[]:co.data||[]; ADV.extra.reviews=re.error?[]:re.data||[]; ADV.extra.profile=pr.error?null:pr.data;
+}
+function advNav(){
+  const side=$('.side-nav'); if(!side)return;
+  if(!side.querySelector('[data-tab="advanced"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='advanced'?'active':'')+'" data-tab="advanced">📊 Analytics & tools</button>');
+  if(ADV.extra.profile?.role==='admin'&&!side.querySelector('[data-tab="admin"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='admin'?'active':'')+'" data-tab="admin">🛡️ Platform admin</button>');
+}
+function advMetrics(st){
+  const orders=MY.orders.filter(o=>o.status!=='Cancelled'), revenue=orders.reduce((a,o)=>a+o.total,0), avg=orders.length?Math.round(revenue/orders.length):0;
+  const delivered=MY.orders.filter(o=>o.status==='Delivered').length, low=MY.products.filter(p=>p.stock>0&&p.stock<=5).length;
+  const byCity={}; orders.forEach(o=>byCity[o.city]=(byCity[o.city]||0)+o.total);
+  const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,6), max=topCities[0]?.[1]||1;
+  return `<div class="metric-grid"><div class="metric"><b>${money(revenue)}</b><span>Gross revenue</span></div><div class="metric"><b>${orders.length}</b><span>Active orders</span></div><div class="metric"><b>${money(avg)}</b><span>Average order</span></div><div class="metric"><b>${low}</b><span>Low-stock products</span></div></div>
+  <div class="advanced-grid"><section class="advanced-card"><h2>Sales by city</h2><p class="fine">Based on orders in this store.</p>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}%"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
+  <section class="advanced-card"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row"><span>${x}</span><div class="bar"><i style="width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
+}
+function advancedPanel(st){
+  const coupons=ADV.extra.coupons||[], customers=ADV.extra.customers||[], reviews=ADV.extra.reviews||[];
+  const prodRows=MY.products.map(p=>`<tr><td>${esc(p.name)}</td><td><input class="stock-input" data-stock="${p.id}" type="number" min="0" value="${p.stock||0}" style="max-width:110px"></td><td>${p.sku?esc(p.sku):'—'}</td><td>${p.is_active?'Visible':'Hidden'}</td></tr>`).join('');
+  const couponRows=coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td>${c.active?'Active':'Off'}</td><td><button class="btn small danger" data-coupon-del="${c.id}">Delete</button></td></tr>`).join('');
+  const customerRows=customers.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('');
+  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
+  return `${advMetrics(st)}
+  <div class="advanced-grid" style="margin-top:16px">
+    <section class="advanced-card"><h2>Inventory</h2><p class="fine">0 means unlimited stock. Save quantities per product.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
+    <section class="advanced-card"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed PKR</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card"><h2>Customers</h2><p class="fine">Returning buyers and their order value.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card"><h2>Reviews</h2><p class="fine">Approve reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
+  </div>
+  <section class="advanced-card" style="margin-top:16px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee (PKR)<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (PKR)<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Theme<select id="storeTheme"><option value="classic" ${st.theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${st.theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${st.theme==='bold'?'selected':''}>Bold</option></select></label><label>Payment methods<select id="payMethods" multiple><option value="cod">Cash on Delivery</option><option value="bank">Bank transfer</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option></select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
+}
+async function adminPanel(){
+  const all=await Promise.all([
+    sb.from('stores').select('id,name,slug,owner_id,created_at,published').order('created_at',{ascending:false}).limit(500),
+    sb.from('orders').select('id,store_id,total,status,created_at').order('created_at',{ascending:false}).limit(1000),
+    sb.from('products').select('id,store_id,is_active,stock').limit(2000),
+    sb.from('profiles').select('id,full_name,phone,role,created_at').order('created_at',{ascending:false}).limit(500)
+  ]);
+  const stores=all[0].error?[]:all[0].data||[], orders=all[1].error?[]:all[1].data||[], products=all[2].error?[]:all[2].data||[], profiles=all[3].error?[]:all[3].data||[];
+  const rev=orders.filter(o=>o.status!=='Cancelled').reduce((a,o)=>a+o.total,0);
+  return `<div class="admin-banner"><b>Platform admin.</b> This area is for EasyBuy operators. Seller dashboards remain isolated by store ownership.</div><div class="metric-grid"><div class="metric"><b>${stores.length}</b><span>Stores</span></div><div class="metric"><b>${profiles.length}</b><span>Users</span></div><div class="metric"><b>${products.length}</b><span>Products</span></div><div class="metric"><b>${money(rev)}</b><span>Order value</span></div></div><div class="advanced-grid"><section class="advanced-card"><h2>Stores</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Store</th><th>Slug</th><th>Published</th></tr></thead><tbody>${stores.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.slug)}</td><td><button class="btn small" data-publish="${s.id}" data-value="${s.published?'false':'true'}">${s.published?'Unpublish':'Publish'}</button></td></tr>`).join('')}</tbody></table></div></section><section class="advanced-card"><h2>Users</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>ID</th><th>Role</th><th>Name</th></tr></thead><tbody>${profiles.map(p=>`<tr><td>${esc(p.id.slice(0,8))}…</td><td><span class="pill">${esc(p.role)}</span></td><td>${esc(p.full_name||'—')}</td></tr>`).join('')}</tbody></table></div></section></div>`;
+}
+const _renderDash=renderDash;
+renderDash=async function(){
+  await _renderDash();
+  await loadAdvanced();
+  advNav();
+  if(D.tab==='advanced'&&curS()){
+    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="mobile-dash-nav"><button class="btn small" data-tab="orders">Orders</button><button class="btn small" data-tab="products">Products</button><button class="btn small" data-tab="advanced">Analytics & tools</button><button class="btn small" data-tab="settings">Settings</button></div><div class="dash-top"><div><h1>Analytics & tools</h1><p>Inventory, customers, coupons, reviews and commerce settings.</p></div><a class="btn" href="#/s/${esc(curS().slug)}">View store</a></div>${advancedPanel(curS())}`;
+  }
+  if(D.tab==='admin'&&ADV.extra.profile?.role==='admin'){
+    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="dash-top"><div><h1>Platform admin</h1><p>Manage EasyBuy at platform level.</p></div></div>${await adminPanel()}`;
+  }
+};
+// Advanced interactions
+addEventListener('click',async e=>{
+  const stock=e.target.closest('#saveInventory');
+  if(stock){await busy(stock,async()=>{for(const i of $$('.stock-input')){const p=MY.products.find(x=>x.id===i.dataset.stock);if(p){const n=Math.max(0,parseInt(i.value,10)||0);await sb.from('products').update({stock:n}).eq('id',p.id)}}await loadStoreData();await loadAdvanced();renderDash();toast('Inventory saved')});return}
+  const cd=e.target.closest('[data-coupon-del]'); if(cd){await busy(cd,async()=>{await sb.from('coupons').delete().eq('id',cd.dataset.couponDel);await loadAdvanced();renderDash();toast('Coupon deleted')});return}
+  const rv=e.target.closest('[data-review]'); if(rv){await busy(rv,async()=>{await sb.from('reviews').update({approved:rv.dataset.approved==='true'}).eq('id',rv.dataset.review);await loadAdvanced();renderDash();toast('Review updated')});return}
+  const pb=e.target.closest('[data-publish]'); if(pb&&ADV.extra.profile?.role==='admin'){await busy(pb,async()=>{await sb.from('stores').update({published:pb.dataset.value==='true'}).eq('id',pb.dataset.publish);toast('Store visibility updated');renderDash()});return}
+});
+addEventListener('submit',async e=>{
+  if(e.target.id==='couponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#cpCode').value.trim().toUpperCase();const type=$('#cpType').value;const val=Math.max(1,parseInt($('#cpValue').value,10)||0);const min=Math.max(0,parseInt($('#cpMin').value,10)||0);const lim=Math.max(0,parseInt($('#cpLimit').value,10)||0);const ex=$('#cpExpiry').value?new Date($('#cpExpiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();renderDash();toast('Coupon created')});return}
+  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),theme:$('#storeTheme').value,payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
+});
+// Order tracking page without exposing order details until store + order number + phone match.
+function renderTrack(){
+  const el=$('#v-login'); el.hidden=false; $('#v-home').hidden=true; $('#v-dashboard').hidden=true; $('#v-store').hidden=true; $('#siteHeader').hidden=false; $('#siteFooter').hidden=true;
+  el.innerHTML=`<div class="wrap track-wrap"><div class="builder"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store link slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult"></div></div></div>`;
+}
+addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div class="track-result"><b>${esc(st.name)} — Order #${x.order_no}</b><p>Status: <strong>${esc(x.status)}</strong><br>Total: ${money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div class="track-result">Order not found. Check the store slug, order number and phone number.</div>'})});
+// Extend router for tracking while retaining the existing router behavior.
+const _route=route;
+route=function(){const h=location.hash||'#/';if(h==='#/track'){renderTrack();return}_route()};
+
+
+if((location.hash||'#/').startsWith('#/dashboard') && USER) renderDash();
+</script>
+</body>
+</html>
