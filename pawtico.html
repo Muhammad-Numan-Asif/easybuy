@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pawtico — Pet Essentials in Pakistan</title>
+  <meta name="description" content="Pawtico — useful grooming, feeding and everyday essentials for cats and dogs. Cash on Delivery across Pakistan.">
+  <meta name="theme-color" content="#123b5d">
+  <!-- Supabase & Config Integration -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+    :root{
+      --navy:#123b5d;--blue:#1f6f9f;--orange:#f59e0b;--cream:#fffaf2;
+      --text:#183042;--muted:#657585;--white:#fff;--line:#e7edf2;
+      --shadow:0 14px 40px rgba(18,59,93,.10);--radius:20px;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:#fff}
+    a{text-decoration:none;color:inherit}button,input{font:inherit}
+    
+    .top{background:var(--navy);color:#fff;text-align:center;padding:9px 14px;font-size:13px}
+    header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+    .nav{max-width:1180px;margin:auto;padding:14px 20px;display:flex;align-items:center;gap:28px}
+    .logo{font-size:25px;font-weight:900;color:var(--navy);display:flex;align-items:center;gap:8px}
+    .logo span{color:var(--orange)}
+    .links{display:flex;gap:22px;font-weight:700;font-size:14px;margin-left:auto}
+    .cart-btn{border:0;background:var(--navy);color:#fff;border-radius:12px;padding:11px 15px;cursor:pointer;font-weight:800}
+
+    /* 1. Hero Section */
+    .hero{background:linear-gradient(135deg,#f4fbff 0%,#fffaf2 100%);padding:72px 20px 55px}
+    .hero-grid{max-width:1180px;margin:auto;display:grid;grid-template-columns:1.05fr .95fr;gap:42px;align-items:center}
+    .eyebrow{display:inline-block;background:#e8f4fb;color:var(--blue);font-weight:900;border-radius:999px;padding:8px 12px;font-size:12px;letter-spacing:.4px}
+    h1{font-size:clamp(40px,6vw,68px);line-height:1.02;margin:17px 0;color:var(--navy);letter-spacing:-2px}
+    .hero p{font-size:18px;line-height:1.7;color:var(--muted);max-width:600px}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}
+    .btn{border:0;border-radius:13px;padding:14px 20px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+    .primary{background:var(--orange);color:#1d2a31}.secondary{background:#fff;color:var(--navy);border:1px solid var(--line)}
+    .hero-card{min-height:360px;border-radius:32px;background:radial-gradient(circle at 30% 20%,#fff 0 10%,transparent 11%),linear-gradient(145deg,#dff2ff,#fff3d7);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);font-size:120px;position:relative;overflow:hidden}
+    .hero-card:after{content:"🐶  🐱";position:absolute;bottom:28px;right:25px;font-size:42px}
+
+    /* 2. Trust Badges */
+    .trust{max-width:1180px;margin:25px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .trust div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;font-size:13px;font-weight:800}
+
+    section{padding:70px 20px}.wrap{max-width:1180px;margin:auto}
+    .section-head{text-align:center;margin-bottom:32px}.section-head h2{font-size:34px;margin:0 0 8px;color:var(--navy)}
+    .section-head p{margin:0;color:var(--muted)}
+
+    /* Products Grid */
+    .search-row{display:flex;gap:12px;max-width:700px;margin:0 auto 30px}
+    .search-row input{flex:1;border:1px solid var(--line);padding:14px 16px;border-radius:13px;outline:none}
+    .products{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .product{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;box-shadow:0 8px 25px rgba(18,59,93,.05);display:flex;flex-direction:column}
+    .pic{height:230px;background:#f6fafc;display:flex;align-items:center;justify-content:center;font-size:90px;overflow:hidden}
+    .pic img{width:100%;height:100%;object-fit:cover}
+    .info{padding:19px;display:flex;flex-direction:column;gap:9px;flex:1}
+    .tag{font-size:11px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.7px}
+    .product h3{margin:0;font-size:18px}.desc{color:var(--muted);font-size:13px;line-height:1.5;flex:1}
+    .price{font-size:22px;font-weight:900;color:var(--navy)}.old{font-size:13px;color:#9aa5ad;text-decoration:line-through;margin-left:6px;font-weight:600}
+    .add{width:100%;background:var(--navy);color:#fff;border:0;border-radius:12px;padding:12px;cursor:pointer;font-weight:900}
+
+    /* 3. Why Pawtico */
+    .why{background:var(--cream)}.features{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+    .feature{background:#fff;padding:24px;border-radius:18px;border:1px solid #f0e7d7}.feature .ico{font-size:30px}.feature h3{margin:12px 0 7px}.feature p{color:var(--muted);font-size:14px;line-height:1.6;margin:0}
+
+    /* Steps */
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.step{border:1px solid var(--line);border-radius:18px;padding:25px}.num{width:38px;height:38px;border-radius:50%;background:#e8f4fb;color:var(--blue);display:grid;place-items:center;font-weight:900}
+
+    /* 4. Customer Reviews */
+    .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.review{padding:22px;border:1px solid var(--line);border-radius:18px}.stars{letter-spacing:2px}.review p{color:var(--muted);line-height:1.6}
+
+    /* 5. FAQ Section */
+    .faq{max-width:800px;margin:auto}.faq details{border-bottom:1px solid var(--line);padding:17px 0}.faq summary{font-weight:800;cursor:pointer}.faq p{color:var(--muted);line-height:1.6}
+
+    /* Newsletter & Footer */
+    .newsletter{background:var(--navy);color:#fff;border-radius:26px;padding:40px;text-align:center}.newsletter p{color:#d5e3ed}.newsletter form{display:flex;max-width:560px;margin:20px auto 0;gap:10px}.newsletter input{flex:1;padding:14px;border:0;border-radius:12px}.newsletter button{border:0;border-radius:12px;padding:14px 18px;font-weight:900;background:var(--orange);cursor:pointer}
+    footer{background:#0c2a42;color:#d5e3ed;padding:45px 20px}.foot{max-width:1180px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:30px}.foot h3{color:#fff}.foot a{display:block;margin:9px 0;font-size:14px}.copyright{border-top:1px solid rgba(255,255,255,.12);margin-top:30px;padding-top:20px;font-size:13px}
+
+    /* Cart Drawer */
+    .drawer{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none}.drawer.open{display:block}.panel{margin-left:auto;background:#fff;width:min(440px,100%);height:100%;padding:24px;overflow:auto}.panel-head{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#f2f5f7;border-radius:10px;padding:8px;cursor:pointer}
+    .cart-item{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}.cart-item small{color:var(--muted)}.qty button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:3px 8px;cursor:pointer}
+    .checkout{margin-top:22px}.checkout input{width:100%;padding:13px;margin:6px 0;border:1px solid var(--line);border-radius:10px}.full{width:100%;margin-top:10px}
+    .empty{color:var(--muted);padding:30px 0;text-align:center}
+
+    /* Floating WhatsApp Button */
+    .float{position:fixed;right:18px;bottom:18px;background:#25d366;color:#fff;border-radius:999px;padding:13px 17px;font-weight:900;box-shadow:var(--shadow);z-index:40}
+
+    @media(max-width:850px){.hero-grid{grid-template-columns:1fr}.products{grid-template-columns:repeat(2,1fr)}.features{grid-template-columns:repeat(2,1fr)}.links{display:none}.trust{grid-template-columns:1fr}.foot{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){section{padding:52px 15px}.hero{padding:52px 15px 35px}h1{letter-spacing:-1px}.hero-card{min-height:260px;font-size:85px}.products,.features,.steps,.reviews{grid-template-columns:1fr}.search-row{flex-direction:column}.newsletter{padding:28px 18px}.newsletter form{flex-direction:column}.foot{grid-template-columns:1fr}.nav{padding:12px 15px}.cart-btn{padding:10px 12px}}
+  </style>
+</head>
+<body>
+  <div class="top">🚚 Free delivery across Pakistan • 💵 Cash on Delivery available</div>
+
+  <header>
+    <nav class="nav">
+      <a class="logo" href="#">🐾 Paw<span>tico</span></a>
+      <div class="links">
+        <a href="#shop">Shop</a><a href="#why">Why Pawtico</a><a href="#reviews">Reviews</a><a href="#faq">FAQ</a>
+      </div>
+      <button class="cart-btn" onclick="openCart()">🛒 Cart <span id="count">0</span></button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">PAWTICO • PET ESSENTIALS</span>
+          <h1>Better care for the pets you love.</h1>
+          <p>Useful grooming, feeding, play and everyday essentials for cats and dogs — delivered across Pakistan with Cash on Delivery.</p>
+          <div class="actions">
+            <a class="btn primary" href="#shop">Shop Best Sellers →</a>
+            <a class="btn secondary" href="#why">Why Pawtico?</a>
+          </div>
+        </div>
+        <div class="hero-card">🐾</div>
+      </div>
+      <div class="trust">
+        <div>✓ COD available</div><div>✓ Nationwide delivery</div><div>✓ Products checked before dispatch</div>
+      </div>
+    </section>
+
+    <!-- SHOP SECTION -->
+    <section id="shop">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Shop our favourites</h2><p>Practical pet essentials selected for everyday care.</p>
+        </div>
+        <div class="search-row"><input id="search" placeholder="Search grooming, bowls, food..." oninput="renderProducts()"></div>
+        <div id="products" class="products">Loading products...</div>
+      </div>
+    </section>
+
+    <!-- WHY PAWTICO SECTION -->
+    <section id="why" class="why">
+      <div class="wrap">
+        <div class="section-head"><h2>Why pet parents choose Pawtico</h2><p>Simple shopping, transparent ordering and useful products.</p></div>
+        <div class="features">
+          <div class="feature"><div class="ico">💵</div><h3>Cash on Delivery</h3><p>Place your order online and pay when your parcel arrives.</p></div>
+          <div class="feature"><div class="ico">🚚</div><h3>Nationwide Delivery</h3><p>Order pet essentials from cities across Pakistan.</p></div>
+          <div class="feature"><div class="ico">🔎</div><h3>Checked Before Dispatch</h3><p>Orders are checked before dispatch to help reduce avoidable issues.</p></div>
+          <div class="feature"><div class="ico">💬</div><h3>WhatsApp Support</h3><p>Need help? Contact Pawtico directly for order assistance.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section>
+      <div class="wrap">
+        <div class="section-head"><h2>How ordering works</h2><p>Three simple steps from Pawtico to your doorstep.</p></div>
+        <div class="steps">
+          <div class="step"><div class="num">1</div><h3>Choose your products</h3><p>Browse the collection and add what your pet needs to your cart.</p></div>
+          <div class="step"><div class="num">2</div><h3>Send your order</h3><p>Enter your delivery details and submit your Cash on Delivery order.</p></div>
+          <div class="step"><div class="num">3</div><h3>Pay on arrival</h3><p>Receive your parcel and pay the rider when it arrives.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REVIEWS SECTION -->
+    <section id="reviews">
+      <div class="wrap">
+        <div class="section-head"><h2>What customers can expect</h2><p>Clear ordering, useful products and straightforward support.</p></div>
+        <div class="reviews">
+          <div class="review"><div class="stars">★★★★★</div><p>“Easy browsing, clear product information and a simple COD checkout.”</p><strong>— Pawtico customer</strong></div>
+          <div class="review"><div class="stars">★★★★★</div><p>“The store makes it easy to find everyday grooming and feeding essentials.”</p><strong>— Pawtico customer</strong></div>
+          <div class="review"><div class="stars">★★★★★</div><p>“A convenient option for ordering pet essentials online in Pakistan.”</p><strong>— Pawtico customer</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ SECTION -->
+    <section id="faq">
+      <div class="wrap">
+        <div class="section-head"><h2>Frequently asked questions</h2><p>Everything you need to know before ordering.</p></div>
+        <div class="faq">
+          <details><summary>Do you offer Cash on Delivery?</summary><p>Yes. Cash on Delivery is available for orders across Pakistan.</p></details>
+          <details><summary>How do I place an order?</summary><p>Add products to your cart, enter your delivery information and complete the order form.</p></details>
+          <details><summary>Is delivery free?</summary><p>Free delivery is currently offered across Pakistan.</p></details>
+          <details><summary>How long does delivery take?</summary><p>Typical delivery is around 2–4 working days, depending on the city.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEWSLETTER -->
+    <section>
+      <div class="wrap">
+        <div class="newsletter">
+          <h2>Get Pawtico updates 🐾</h2><p>Be the first to know about new arrivals and special offers.</p>
+          <form onsubmit="subscribe(event)"><input type="email" required placeholder="Your email address"><button>Join</button></form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot">
+      <div><a class="logo" href="#" style="color:#fff">🐾 Paw<span>tico</span></a><p>Pet essentials for cats and dogs, delivered across Pakistan.</p></div>
+      <div><h3>Shop</h3><a href="#shop">All Products</a><a href="#shop">Grooming</a><a href="#shop">Feeding</a></div>
+      <div><h3>Help</h3><a href="#faq">FAQ</a><a href="#">Shipping Policy</a><a href="#">Return Policy</a></div>
+    </div>
+    <div class="foot copyright">© 2026 Pawtico Pakistan. All rights reserved.</div>
+  </footer>
+
+  <!-- FLOATING WHATSAPP -->
+  <a class="float" id="wa" href="https://wa.me/923035874069" target="_blank">💬 WhatsApp</a>
+
+  <!-- CART DRAWER -->
+  <div class="drawer" id="drawer" onclick="if(event.target===this)closeCart()">
+    <aside class="panel">
+      <div class="panel-head"><h2>Your Cart</h2><button class="close" onclick="closeCart()">✕</button></div>
+      <div id="cartItems"></div>
+      <div class="checkout">
+        <h3>Cash on Delivery</h3>
+        <input id="name" placeholder="Full name">
+        <input id="phone" placeholder="03XXXXXXXXX">
+        <input id="city" placeholder="City">
+        <input id="address" placeholder="Complete delivery address">
+        <button class="btn primary full" onclick="placeOrder()">📦 Complete Order via WhatsApp</button>
+      </div>
+    </aside>
+  </div>
+
+<script>
+let products = [];
+let cart = JSON.parse(localStorage.getItem("pawticoCart") || "[]");
+
+async function initStore() {
+  if (window.EASYBUY_CONFIG && window.supabase) {
+    try {
+      const db = window.supabase.createClient(window.EASYBUY_CONFIG.SUPABASE_URL, window.EASYBUY_CONFIG.SUPABASE_ANON_KEY);
+      
+      const { data: store } = await db.from('stores').select('*').eq('slug', 'pawtico').single();
+      
+      let storeId = store ? store.id : null;
+      let query = db.from('products').select('*');
+      if (storeId) query = query.eq('store_id', storeId);
+      
+      const { data } = await query;
+      if (data && data.length > 0) {
+        products = data;
+      }
+    } catch (e) {
+      console.log('Using local fallback', e);
+    }
+  }
+
+  if (!products.length) {
+    products = [
+      {id:1, title:"Daling Rechargeable Professional Pet Clipper", category:"Grooming", price:3900, compare_at_price:4999, image_url:"✂️", description:"Professional rechargeable hair trimmer set for dogs and cats."},
+      {id:2, title:"Petiza Plus Premium Cat Food (1.2kg)", category:"Feeding", price:1599, compare_at_price:1999, image_url:"🐱🍲", description:"Chicken flavor premium dry cat food for everyday nutrition."},
+      {id:3, title:"Cat Shaped Double Food & Water Bowl", category:"Feeding", price:799, compare_at_price:1199, image_url:"https://raw.githubusercontent.com/Muhammad-Numan-Asif/pawtico/main/bowl.jpg", description:"Cute double-compartment feeding bowl for food and water."},
+      {id:4, title:"Electric Pet Hair Cleaning Comb", category:"Grooming", price:2999, compare_at_price:3799, image_url:"https://raw.githubusercontent.com/Muhammad-Numan-Asif/pawtico/main/comb.jpg", description:"Electric hair cleaning tool and de-shedding comb."}
+    ];
+  }
+  renderProducts();
+  save();
+}
+
+function money(n){ return "Rs. " + (n || 0).toLocaleString("en-PK"); }
+
+function renderProducts(){
+  const q = (document.getElementById("search").value || "").toLowerCase();
+  const list = products.filter(p => ((p.title||p.name||"") + " " + (p.category||"") + " " + (p.description||"")).toLowerCase().includes(q));
+  
+  const container = document.getElementById("products");
+  if(!list.length) {
+    container.innerHTML = '<p class="empty">No products found.</p>';
+    return;
+  }
+
+  container.innerHTML = list.map(p => {
+    const img = p.image_url || p.img || '🐾';
+    const isUrl = img.startsWith('http') || img.includes('.');
+    const title = p.title || p.name;
+    const cat = p.category || 'Pet Essential';
+    const desc = p.description || '';
+    const price = p.price;
+    const oldPrice = p.compare_at_price || p.old;
+
+    return `
+      <article class="product">
+        <div class="pic">${isUrl ? `<img src="${img}" alt="${title}">` : img}</div>
+        <div class="info">
+          <span class="tag">${cat}</span>
+          <h3>${title}</h3>
+          <div class="desc">${desc}</div>
+          <div class="price">${money(price)} ${oldPrice ? `<span class="old">${money(oldPrice)}</span>` : ''}</div>
+          <button class="add" onclick="add('${p.id}')">Add to Cart</button>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+function add(id){
+  const x = cart.find(i => String(i.id) === String(id));
+  if (x) { x.qty++; } else { cart.push({ id, qty: 1 }); }
+  save();
+  openCart();
+}
+
+function save(){
+  localStorage.setItem("pawticoCart", JSON.stringify(cart));
+  renderCart();
+  document.getElementById("count").textContent = cart.reduce((a,b) => a + b.qty, 0);
+}
+
+function renderCart(){
+  const box = document.getElementById("cartItems");
+  if(!cart.length){
+    box.innerHTML = '<div class="empty">Your cart is empty.<br>Pick something your pet will love 🐾</div>';
+    return;
+  }
+  let total = 0;
+  box.innerHTML = cart.map(i => {
+    const p = products.find(x => String(x.id) === String(i.id)) || { title: 'Product', price: 0 };
+    total += p.price * i.qty;
+    return `
+      <div class="cart-item">
+        <div><strong>${p.title || p.name}</strong><br><small>${money(p.price)} × ${i.qty}</small></div>
+        <div class="qty">
+          <button onclick="change('${i.id}', -1)">−</button> 
+          ${i.qty} 
+          <button onclick="change('${i.id}', 1)">+</button>
+        </div>
+      </div>`;
+  }).join("") + `<h3 style="display:flex;justify-content:space-between">Total <span>${money(total)}</span></h3>`;
+}
+
+function change(id, n){
+  const x = cart.find(i => String(i.id) === String(id));
+  if(x){
+    x.qty += n;
+    if(x.qty <= 0) cart = cart.filter(i => String(i.id) !== String(id));
+    save();
+  }
+}
+
+function openCart(){ document.getElementById("drawer").classList.add("open"); renderCart(); }
+function closeCart(){ document.getElementById("drawer").classList.remove("open"); }
+
+function placeOrder(){
+  if(!cart.length) return alert("Your cart is empty.");
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const city = document.getElementById("city").value.trim();
+  const address = document.getElementById("address").value.trim();
+  
+  if(!name || !phone || !city || !address) return alert("Please fill all delivery details.");
+  
+  const items = cart.map(i => {
+    const p = products.find(x => String(x.id) === String(i.id));
+    return `${p ? (p.title || p.name) : 'Item'} x${i.qty}`;
+  }).join(", ");
+  
+  const total = cart.reduce((s, i) => {
+    const p = products.find(x => String(x.id) === String(i.id));
+    return s + (p ? p.price * i.qty : 0);
+  }, 0);
+  
+  const msg = `Pawtico Order%0A%0AName: ${encodeURIComponent(name)}%0APhone: ${encodeURIComponent(phone)}%0ACity: ${encodeURIComponent(city)}%0AAddress: ${encodeURIComponent(address)}%0AItems: ${encodeURIComponent(items)}%0ATotal: ${encodeURIComponent(money(total))}%0APayment: Cash on Delivery`;
+  window.open(`https://wa.me/923035874069?text=${msg}`, "_blank");
+}
+
+function subscribe(e){
+  e.preventDefault();
+  alert("Subscribed successfully!");
+}
+
+initStore();
+</script>
+</body>
+</html>
