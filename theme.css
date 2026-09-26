@@ -504,4 +504,24 @@ fieldset legend{
     transition-duration:.01ms!important;
     scroll-behavior:auto!important;
   }
+}/* Force light theme (Shopify-style) */
+:root,
+:root[data-theme="dark"]{
+  --bg:#ffffff !important;
+  --bg-soft:#f9fafb !important;
+  --surface:#ffffff !important;
+  --surface-2:#f9fafb !important;
+  --ink:#111827 !important;
+  --muted:#6b7280 !important;
+  --line:#e5e7eb !important;
+  --line-soft:#f3f4f6 !important;
+  --brand:#008060 !important;
+  --brand-500:#00a37a !important;
+  --brand-600:#008060 !important;
+  --on-brand:#ffffff !important;
 }
+body{background:#ffffff !important;color:#111827 !important}
+.site-head{background:rgba(255,255,255,.9) !important}
+.dash-side{background:#ffffff !important}
+.builder,.panel-box,.dashboard-card,.advanced-card,.metric,.frame{background:#ffffff !important}
+.card{background:#ffffff !important}
