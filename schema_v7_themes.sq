@@ -1,0 +1,10 @@
+-- Add theme presets to stores
+alter table public.stores add column if not exists theme_preset text not null default 'classic';
+alter table public.stores add column if not exists theme_config jsonb not null default '{}'::jsonb;
+
+-- Validate preset
+alter table public.stores drop constraint if exists stores_theme_preset_chk;
+alter table public.stores add constraint stores_theme_preset_chk 
+  check (theme_preset in ('classic','minimal','bold','elegant'));
+
+grant update (theme_preset, theme_config) on public.stores to authenticated;
