@@ -1,10 +1,9 @@
-
 /* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
 const uid=()=>Math.random().toString(36).slice(2,8);
-const CATS={Pets:'n',Fashion:'n',Electronics:'n',Home:'n',Beauty:'n',Other:'nn'};
+const CATS={Pets:'🐾',Fashion:'👗',Electronics:'🎧',Home:'🏠',Beauty:'💄',Other:'🛍️'};
 const COLORS=['#0a7d55','#1f6f9f','#d8452e','#7a4dd8','#c98a00','#c2185b','#26332e'];
 const STATUSES=['New','Confirmed','Shipped','Delivered','Cancelled'];
 const slugify=s=>{let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24).replace(/-+$/,'');if(b.length<3)b=(b+'-shop').replace(/^-/,'');return b};
@@ -17,11 +16,13 @@ async function busy(btn,fn){if(btn)btn.disabled=true;try{return await fn()}catch
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+
 /* ---------- supabase ---------- */
 const CFG=window.EASYBUY_CONFIG||{};
 const configured=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/^PASTE/.test(CFG.SUPABASE_URL)&&window.supabase);
 const sb=configured?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 let USER=null;
+
 /* ---------- router ---------- */
 function route(){
   const parts=(location.hash||'#/').split('/');
@@ -39,6 +40,7 @@ function route(){
 }
 window.addEventListener('hashchange',()=>route());
 function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
+
 /* ---------- auth ---------- */
 const AUTH={mode:'signup',note:''};
 function renderLogin(){
@@ -96,6 +98,7 @@ document.addEventListener('click',async e=>{
     else{AUTH.mode='login';location.hash='#/login';route()}
   }
 });
+
 /* ---------- home ---------- */
 const B={cat:'Pets',color:COLORS[0]};
 function initBuilder(){
@@ -132,12 +135,13 @@ async function renderHome(){
   try{
     const list=ok(await sb.from('stores').select('slug,name,category,color').order('created_at',{ascending:false}).limit(12));
     box.innerHTML=list.length?list.map(s=>`
-      <div class="store-row"><div class="store-dot" style="background:${esc(s.color)};color:${ink(s.color)}">${CATS[s.category]||'nn'}</div>
+      <div class="store-row"><div class="store-dot" style="background:${esc(s.color)};color:${ink(s.color)}">${CATS[s.category]||'🛍️'}</div>
       <div><b>${esc(s.name)}</b><small>${esc(s.category)}</small></div>
       <a class="btn small" href="#/s/${esc(s.slug)}">Visit store</a></div>`).join('')
       :'<p class="sub">Abhi koi store nahi bana. Pehla store aap ka ho sakta hai.</p>';
   }catch(e){box.innerHTML='<p class="sub">Stores load nahi ho sake: '+esc(e.message)+'</p>'}
 }
+
 /* ---------- dashboard ---------- */
 const MY={stores:[],active:null,products:[],orders:[]};
 const D={tab:'orders',form:null,file:null};
@@ -169,9 +173,9 @@ function renderDash(){
     <aside class="dash-side">
       <div class="side-store"><small style="color:var(--muted)">Your store</small><b>${esc(st.name)}</b><small>${esc(st.category)}</small></div>
       <div class="side-nav">
-        <button class="${D.tab==='orders'?'active':''}" data-tab="orders">n Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
-        <button class="${D.tab==='products'?'active':''}" data-tab="products">nn Products</button>
-        <button class="${D.tab==='settings'?'active':''}" data-tab="settings">nn Settings</button>
+        <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
+        <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
+        <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
       </div>
       <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
     </aside>
@@ -206,12 +210,12 @@ function productsPanel(st){
     <div class="two"><label>SKU<input id="pSku" maxlength="40" value="${esc(f.sku||'')}" placeholder="Optional SKU"></label><label>Stock (empty = not tracked, 0 = sold out)<input id="pStock" type="number" min="0" value="${f.stock==null?'':esc(f.stock)}" placeholder="Not tracked"></label></div>
     <label>Variants <span class="fine" style="display:inline">(one per line, e.g. Red | Small | 799)</span><textarea id="pVariants" placeholder="Red | Small | 799\nBlue | Medium | 849">${esc((f.variants||[]).map(v=>[v.name||'',v.option||'',v.price||''].join(' | ')).join('\n'))}</textarea></label>
     <label>Description<textarea id="pDesc" maxlength="240" placeholder="Short product description">${esc(f.description||'')}</textarea></label>
-    <div class="img-pick"><div class="thumb" id="pThumb">${f.image_url?`<img src="${esc(f.image_url)}" alt="">`:(CATS[st.category]||'nn')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
+    <div class="img-pick"><div class="thumb" id="pThumb">${f.image_url?`<img src="${esc(f.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
     <div style="display:flex;gap:10px"><button class="btn primary" type="submit">Save product</button><button class="btn" type="button" data-act="cancelform">Cancel</button></div>
   </form>`:'';
-}
-  const list=MY.products.length?`<div class="dashboard-card"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:(CATS[st.category]||'
+  const list=MY.products.length?`<div class="dashboard-card"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="dashboard-card empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
   return form+list;
+}
 function settingsPanel(st){
   return `<form class="panel-box" id="sForm">
     <div class="row-head"><h2>Store settings</h2></div>
@@ -286,6 +290,8 @@ function bindDash(){
     }
   });
 }
+
+
 /* ---------- international helpers ---------- */
 const COUNTRIES=[
  {code:'PK',name:'Pakistan',cur:'PKR',dial:'+92'},{code:'US',name:'United States',cur:'USD',dial:'+1'},
@@ -319,7 +325,7 @@ const payLabel=m=>PAY[m]||m;
 const varLabel=v=>[v&&v.name,v&&v.option].map(x=>String(x||'').trim()).filter(Boolean).join(' / ');
 const isSold=p=>p.stock!=null&&p.stock<=0;
 const lowStock=p=>p.stock!=null&&p.stock>0&&p.stock<=5;
-const stars=n=>{const k=Math.round(n);return 'H'.repeat(k)+'n'.repeat(5-k)};
+const stars=n=>{const k=Math.round(n);return '★'.repeat(k)+'☆'.repeat(5-k)};
 function unitPrice(p,variant){
   if(variant&&Array.isArray(p.variants)){const v=p.variants.find(x=>varLabel(x)===variant);if(v&&v.price>0)return v.price}
   return p.price;
@@ -419,7 +425,7 @@ function drawGrid(){
     const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>'
       :vs.length?`<button class="btn accent" data-product="${p.id}">Choose option</button>`
       :`<button class="btn accent" data-add="${p.id}">Add to cart</button>`;
-    return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'
+    return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button>
     <div class="body">${badge}${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3>
     ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
     <div class="desc">${esc(p.description||'')}</div>
@@ -430,7 +436,7 @@ function openProduct(p){
   const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
   const note=isSold(p)?'<p class="stock-note out">Sold out</p>':lowStock(p)?`<p class="stock-note low">Only ${p.stock} left</p>`:'';
   $('#pmBody').innerHTML=`
-  <div class="product-modal-inner"><div class="product-modal-pic">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:(CATS[st.category]||'nn')}</div>
+  <div class="product-modal-inner"><div class="product-modal-pic">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:(CATS[st.category]||'🛍️')}</div>
   <div>${p.old_price>p.price?'<span class="badge-sale">SALE</span>':''}
     <h2 style="margin-top:10px">${esc(p.name)}</h2>
     ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
@@ -458,7 +464,7 @@ function drawCart(){
   if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfQuote').innerHTML='';$('#sfForm').hidden=true;return}
   $('#sfForm').hidden=false;
   $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);
-    return `<div class="ci"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one">
+    return `<div class="ci"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one">+</button></div></div>`}).join('');
   refreshQuote();
 }
 let quoteT;
@@ -480,7 +486,7 @@ function refreshQuote(){
     }else q=r.data[0];
     SF.quote=q;
     const F=n=>fmtCur(n,q.currency||curMarket().currency);
-    box.innerHTML=`<div class="qrow"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow"><span>Discount</span><span>-${F(q.discount)}</span></div>`:''}<div class="qrow"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot"><span>Total</span><span>${F(q.total)}</span></div>`;
+    box.innerHTML=`<div class="qrow"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot"><span>Total</span><span>${F(q.total)}</span></div>`;
     if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
   },250);
 }
@@ -582,6 +588,8 @@ function bindStore(){
     });
   });
 }
+
+
 /* ---------- markets (international selling) ---------- */
 function marketsCard(st){
   const home=st.home_country||'PK',cur=st.currency||'PKR',ms=Array.isArray(st.markets)?st.markets:[];
@@ -635,6 +643,7 @@ document.addEventListener('click',async e=>{
   if(!confirm('Remove '+countryName(d.dataset.marketDel)+' from your markets?'))return;
   await busy(d,()=>saveStoreFields({markets:(st.markets||[]).filter(m=>m.country!==d.dataset.marketDel)},'Market removed'));
 });
+
 /* ---------- start ---------- */
 (async function init(){
   initBuilder();bindDash();bindStore();
@@ -659,8 +668,8 @@ async function loadAdvanced(){
 }
 function advNav(){
   const side=$('.side-nav'); if(!side)return;
-  if(!side.querySelector('[data-tab="advanced"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='advanced'?'active':'')+'" data-tab="advanced">n Analytics & tools</button>');
-  if(ADV.extra.profile?.role==='admin'&&!side.querySelector('[data-tab="admin"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='admin'?'active':'')+'" data-tab="admin">
+  if(!side.querySelector('[data-tab="advanced"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='advanced'?'active':'')+'" data-tab="advanced">📊 Analytics & tools</button>');
+  if(ADV.extra.profile?.role==='admin'&&!side.querySelector('[data-tab="admin"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='admin'?'active':'')+'" data-tab="admin">🛡️ Platform admin</button>');
 }
 function advMetrics(st){
   const orders=MY.orders.filter(o=>o.status!=='Cancelled'), revenue=orders.reduce((a,o)=>a+o.total,0), avg=orders.length?Math.round(revenue/orders.length):0;
@@ -676,7 +685,7 @@ function advancedPanel(st){
   const prodRows=MY.products.map(p=>`<tr><td>${esc(p.name)}</td><td><input class="stock-input" data-stock="${p.id}" type="number" min="0" value="${p.stock==null?'':p.stock}" placeholder="Not tracked" style="max-width:130px"></td><td>${p.sku?esc(p.sku):'—'}</td><td>${p.is_active?'Visible':'Hidden'}</td></tr>`).join('');
   const couponRows=coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td>${c.active?'Active':'Off'}</td><td><button class="btn small danger" data-coupon-del="${c.id}">Delete</button></td></tr>`).join('');
   const customerRows=customers.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('');
-  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'H'.repeat(r.rating)}${'n'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
+  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
   return `${advMetrics(st)}
   <div class="advanced-grid" style="margin-top:16px">
     <section class="advanced-card"><h2>Inventory</h2><p class="fine">Leave a box empty for products you do not track. 0 means sold out. Save quantities per product.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
