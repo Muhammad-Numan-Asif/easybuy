@@ -5,35 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>EasyBuy: apni online dukaan banao</title>
 <meta name="description" content="EasyBuy lets anyone in Pakistan open an online store with Cash on Delivery, a seller dashboard and WhatsApp orders.">
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
 <link rel="stylesheet" href="theme.css">
 </head>
-
 <body>
 
-<div class="banner" id="setup" hidden>
-  <b>Setup needed.</b> Open <code>config.js</code> and paste your Supabase project URL and anon key. Steps are in README.md.
-</div>
+<div class="banner" id="setup" hidden><b>Setup needed.</b> Open <code>config.js</code> and paste your Supabase project URL and anon key. Steps are in README.md.</div>
 
 <header class="site-head" id="siteHeader">
   <nav class="wrap nav">
     <a class="logo" href="#/" aria-label="EasyBuy home">
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="9" fill="var(--brand)"/>
-        <path d="M9 12h14l-1.4 10a2 2 0 0 1-2 1.7h-7.2a2 2 0 0 1-2-1.7L9 12Z" fill="var(--on-brand)"/>
-        <path d="M12.5 12v-1.5a3.5 3.5 0 0 1 7 0V12"
-              fill="none"
-              stroke="#ffc933"
-              stroke-width="2"
-              stroke-linecap="round"/>
-      </svg>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--brand)"/><path d="M9 12h14l-1.4 10a2 2 0 0 1-2 1.7h-7.2a2 2 0 0 1-2-1.7L9 12Z" fill="var(--on-brand)"/><path d="M12.5 12v-1.5a3.5 3.5 0 0 1 7 0V12" fill="none" stroke="#ffc933" stroke-width="2" stroke-linecap="round"/></svg>
       EasyBuy
     </a>
-
     <div class="nav-links">
       <a href="#/" data-nav="home">Home</a>
       <a href="#/dashboard" data-nav="dashboard">Seller dashboard</a>
@@ -44,211 +30,81 @@
 </header>
 
 <main>
-
 <!-- HOME -->
 <div id="v-home" data-view>
-
   <div class="wrap hero" id="builderTop">
-
     <div>
       <h1>Apni online dukaan banao, 5 minute mein.</h1>
-
-      <p class="lead">
-        Products daalo aur apna link share karo. Orders dashboard mein aate hain,
-        WhatsApp par bhejne ka button saath hai, aur Cash on Delivery pehle din se chalta hai.
-      </p>
-
+      <p class="lead">Products daalo aur apna link share karo. Orders dashboard mein aate hain, WhatsApp par bhejne ka button saath hai, aur Cash on Delivery pehle din se chalta hai.</p>
       <form class="builder" id="builder" autocomplete="off">
-
-        <label>
-          Store ka naam
+        <label>Store ka naam
           <input id="bName" maxlength="28" placeholder="Jaise: Pawtico, Ali Traders">
         </label>
-
-        <fieldset>
-          <legend>Kya bechte hain?</legend>
-          <div class="chips" id="bCats"></div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Store ka rang</legend>
-          <div class="swatches" id="bColors"></div>
-        </fieldset>
-
-        <label>
-          WhatsApp number
+        <fieldset><legend>Kya bechte hain?</legend><div class="chips" id="bCats"></div></fieldset>
+        <fieldset><legend>Store ka rang</legend><div class="swatches" id="bColors"></div></fieldset>
+        <label>WhatsApp number
           <input id="bWa" inputmode="tel" placeholder="03XXXXXXXXX">
         </label>
-
-        <button class="btn primary big" type="submit">
-          Store banao
-        </button>
-
-        <p class="fine">
-          Ye prototype hai. Aap ka data sirf is browser mein save hota hai.
-        </p>
-
+        <button class="btn primary big" type="submit">Store banao</button>
+        <p class="fine">Ye prototype hai. Aap ka data sirf is browser mein save hota hai.</p>
       </form>
     </div>
-
     <div class="hero-preview" aria-label="Live preview of your store">
-
       <div class="frame" id="frame">
-
-        <div class="frame-bar">
-          <i></i>
-          <i></i>
-          <i></i>
-          <span id="pvUrl">yourstore.easybuy.pk</span>
-        </div>
-
-        <div class="pv-head">
-          <b id="pvName">Your store</b>
-          <span class="pv-cart">Cart 0</span>
-        </div>
-
-        <div class="pv-band">
-          <h3 id="pvBand">Your store</h3>
-          <p>Cash on Delivery across Pakistan</p>
-        </div>
-
+        <div class="frame-bar"><i></i><i></i><i></i><span id="pvUrl">yourstore.easybuy.pk</span></div>
+        <div class="pv-head"><b id="pvName">Your store</b><span class="pv-cart">Cart 0</span></div>
+        <div class="pv-band"><h3 id="pvBand">Your store</h3><p>Cash on Delivery across Pakistan</p></div>
         <div class="pv-grid" id="pvGrid"></div>
-
       </div>
-
-      <p class="pv-note">
-        Jo aap upar likhte hain, store yahan usi waqt badalta hai.
-      </p>
-
+      <p class="pv-note">Jo aap upar likhte hain, store yahan usi waqt badalta hai.</p>
     </div>
-
   </div>
 
-
   <section class="wrap block" id="stores">
-
     <h2>EasyBuy par bane stores</h2>
-
-    <p class="sub">
-      Kisi bhi store par click karke dekho ke customer ko kya nazar aata hai.
-      Wahan se test order bhi de sakte ho.
-    </p>
-
+    <p class="sub">Kisi bhi store par click karke dekho ke customer ko kya nazar aata hai. Wahan se test order bhi de sakte ho.</p>
     <div class="store-list" id="storeList"></div>
-
   </section>
 
-
   <section class="wrap block">
-
     <h2>Seller ko kya milta hai</h2>
-
-    <p class="sub">
-      Shuru mein sirf wo cheezein jo Pakistan mein online bechne ke liye sach mein chahiye.
-    </p>
-
+    <p class="sub">Shuru mein sirf wo cheezein jo Pakistan mein online bechne ke liye sach mein chahiye.</p>
     <div class="perks">
-
-      <div class="perk">
-        <h3>Cash on Delivery</h3>
-        <p>
-          Customer parcel milne par payment karta hai.
-          Payment gateway ka intezar nahi.
-        </p>
-      </div>
-
-      <div class="perk">
-        <h3>Orders do jagah</h3>
-        <p>
-          Har order dashboard mein dikhta hai,
-          aur customer ko WhatsApp par message karne ka button saath hota hai.
-        </p>
-      </div>
-
-      <div class="perk">
-        <h3>Apna store link</h3>
-        <p>
-          Har store ka apna link.
-          Instagram bio ya WhatsApp status par laga do.
-        </p>
-      </div>
-
-      <div class="perk">
-        <h3>Phone par theek chalta hai</h3>
-        <p>
-          Store aur dashboard dono mobile screen ke hisaab se bane hain.
-        </p>
-      </div>
-
+      <div class="perk"><h3>Cash on Delivery</h3><p>Customer parcel milne par payment karta hai. Payment gateway ka intezar nahi.</p></div>
+      <div class="perk"><h3>Orders do jagah</h3><p>Har order dashboard mein dikhta hai, aur customer ko WhatsApp par message karne ka button saath hota hai.</p></div>
+      <div class="perk"><h3>Apna store link</h3><p>Har store ka apna link. Instagram bio ya WhatsApp status par laga do.</p></div>
+      <div class="perk"><h3>Phone par theek chalta hai</h3><p>Store aur dashboard dono mobile screen ke hisaab se bane hain.</p></div>
     </div>
-
   </section>
-
 
   <section class="wrap block">
-
     <h2>Shuru kaise karein</h2>
-
-    <p class="sub">
-      Teen kaam, is tarteeb se.
-    </p>
-
+    <p class="sub">Teen kaam, is tarteeb se.</p>
     <ol class="steps">
-
-      <li>
-        <b>Store banao</b>
-        <span>Naam, rang aur WhatsApp number daalo.</span>
-      </li>
-
-      <li>
-        <b>Products daalo</b>
-        <span>Dashboard mein photo, price aur description add karo.</span>
-      </li>
-
-      <li>
-        <b>Link share karo</b>
-        <span>Orders dashboard mein aate jayenge, status wahin se badlo.</span>
-      </li>
-
+      <li><b>Store banao</b><span>Naam, rang aur WhatsApp number daalo.</span></li>
+      <li><b>Products daalo</b><span>Dashboard mein photo, price aur description add karo.</span></li>
+      <li><b>Link share karo</b><span>Orders dashboard mein aate jayenge, status wahin se badlo.</span></li>
     </ol>
-
   </section>
-
 </div>
 
 
 <!-- LOGIN -->
 <div id="v-login" data-view hidden></div>
-
-
 <!-- DASHBOARD -->
-<div id="v-dashboard" data-view hidden>
-  <div class="wrap dash" id="dash"></div>
-</div>
-
-
+<div id="v-dashboard" data-view hidden><div class="wrap dash" id="dash"></div></div>
 <!-- STORE -->
 <div id="v-store" data-view hidden></div>
-
 </main>
 
-
 <footer class="site-foot" id="siteFooter">
-  <div class="wrap">
-    EasyBuy — Pakistan-focused online store builder.
-    COD, inventory, coupons, analytics and store tools in one dashboard.
-  </div>
+  <div class="wrap">EasyBuy — Pakistan-focused online store builder. COD, inventory, coupons, analytics and store tools in one dashboard.</div>
 </footer>
-
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-
 <script src="config.js"></script>
-
 <script src="app.js"></script>
-
 </body>
 </html>
