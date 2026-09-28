@@ -17,16 +17,6 @@ const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 
-/* ---------- default store sections ---------- */
-const DEFAULT_SECTIONS = [
-  { id: 'sec-hero', type: 'hero', enabled: true, title: '', subtitle: '' },
-  { id: 'sec-announcement', type: 'announcement', enabled: true, text: '🎉 Free delivery on orders over Rs. 3,000!' },
-  { id: 'sec-search', type: 'search', enabled: true },
-  { id: 'sec-featured', type: 'featured', enabled: true, title: 'Featured Products', limit: 4 },
-  { id: 'sec-grid', type: 'grid', enabled: true, title: 'All Products' },
-  { id: 'sec-banner', type: 'banner', enabled: true, title: 'Special Discount Offer', subtitle: 'Get up to 20% off on selected items today!', button_text: 'Shop Now' }
-];
-
 /* ---------- supabase ---------- */
 const CFG=window.EASYBUY_CONFIG||{};
 const configured=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/^PASTE/.test(CFG.SUPABASE_URL)&&window.supabase);
@@ -36,7 +26,7 @@ let USER=null;
 /* ---------- router ---------- */
 function route(){
   const parts=(location.hash||'#/').split('/');
-  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':'home';
+  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':parts[1]==='track'?'track':'home';
   if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
   $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
   $('#siteHeader').hidden=v==='store';
@@ -46,6 +36,7 @@ function route(){
   if(v==='login')renderLogin();
   if(v==='dashboard')loadDash();
   if(v==='store')renderStore(parts[2]);
+  if(v==='track')renderTrack();
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',()=>route());
@@ -55,7 +46,7 @@ function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
 const AUTH={mode:'signup',note:''};
 function renderLogin(){
   const su=AUTH.mode==='signup',pend=readPending();
-  $('#v-login').innerHTML=`<div class="wrap auth"><form class="builder" id="authForm">
+  $('#v-login').innerHTML=`<div class="wrap auth" style="padding:60px 0;min-height:calc(100vh - 110px);display:grid;place-items:center"><form class="builder" id="authForm" style="width:min(520px,100%)">
     <h2>${su?'Create your seller account':'Log in'}</h2>
     <p class="fine" style="margin:0 0 16px">${esc(pend?'Your store "'+pend.name+'" will be created as soon as your account is ready.':AUTH.note||'Sign up with your email address and a password.')}</p>
     <label>Email<input id="aEmail" type="email" autocomplete="email" required></label>
@@ -76,16 +67,7 @@ async function createStore(d){
   let base=slugify(d.name);
   for(let i=0;i<5;i++){
     const slug=i===0?base:(base.slice(0,24)+'-'+uid().slice(0,3));
-    const r=await sb.from('stores').insert({
-      slug,
-      name:d.name,
-      category:d.cat,
-      color:d.color,
-      theme: 'classic',
-      sections: DEFAULT_SECTIONS,
-      whatsapp:d.wa||'',
-      tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.'
-    }).select().single();
+    const r=await sb.from('stores').insert({slug,name:d.name,category:d.cat,color:d.color,whatsapp:d.wa||'',tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.'}).select().single();
     if(!r.error)return r.data;
     if(r.error.code!=='23505')throw r.error;
   }
@@ -120,6 +102,33 @@ document.addEventListener('click',async e=>{
 
 /* ---------- home ---------- */
 const B={cat:'Pets',color:COLORS[0]};
+const HERO_WORDS=['five minutes','one afternoon','your lunch break','a single evening'];
+let heroI=0, heroT=null;
+
+function startHeroRotator(){
+  const el=$('#heroRotator');
+  if(!el)return;
+  clearInterval(heroT);
+  heroT=setInterval(()=>{
+    el.classList.add('swap');
+    setTimeout(()=>{
+      heroI=(heroI+1)%HERO_WORDS.length;
+      el.textContent=HERO_WORDS[heroI];
+      el.classList.remove('swap');
+    },350);
+  },3200);
+}
+
+function initFeatureTabs(){
+  const wrap=$('#featureTabs'); if(!wrap)return;
+  wrap.addEventListener('click',e=>{
+    const b=e.target.closest('[data-tab]'); if(!b)return;
+    const key=b.dataset.tab;
+    $$('#featureTabs .tab').forEach(x=>x.classList.toggle('on',x===b));
+    $$('#tabPanels .tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===key));
+  });
+}
+
 function initBuilder(){
   $('#bCats').innerHTML=Object.keys(CATS).map(c=>`<button type="button" class="chip" data-cat="${c}" aria-pressed="${c===B.cat}">${CATS[c]} ${c}</button>`).join('');
   $('#bColors').innerHTML=COLORS.map(c=>`<button type="button" class="sw" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===B.color}"></button>`).join('');
@@ -138,8 +147,11 @@ function initBuilder(){
   $('#navCreate').addEventListener('click',e=>{
     if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
   });
+  const cta=$('#ctaBottom');
+  if(cta)cta.addEventListener('click',e=>{e.preventDefault();$('#builderTop').scrollIntoView();setTimeout(()=>$('#bName').focus({preventScroll:true}),400)});
   preview();
 }
+
 function preview(){
   const name=$('#bName').value.trim()||'Your store';
   const f=$('#frame');f.style.setProperty('--accent',B.color);f.style.setProperty('--on-accent',ink(B.color));
@@ -148,8 +160,12 @@ function preview(){
   const e=CATS[B.cat],prices=['1,499','2,999','799'];
   $('#pvGrid').innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
 }
+
 async function renderHome(){
+  const yr=$('#yr'); if(yr)yr.textContent=new Date().getFullYear();
+  startHeroRotator();
   const box=$('#storeList');
+  if(!box)return;
   if(!sb){box.innerHTML='<p class="sub">Stores will appear here once the platform is connected.</p>';return}
   try{
     const list=ok(await sb.from('stores').select('slug,name,category,color').order('created_at',{ascending:false}).limit(12));
@@ -190,20 +206,20 @@ function renderDash(){
   const active=MY.products.filter(p=>p.is_active).length;
   el.innerHTML=`<div class="dash-shell">
     <aside class="dash-side">
-      <div class="side-store"><small style="color:var(--muted)">Your store</small><b>${esc(st.name)}</b><small>${esc(st.category)}</small></div>
+      <div class="side-store"><small style="color:rgba(255,255,255,.55)">Your store</small><b>${esc(st.name)}</b><small>${esc(st.category)}</small></div>
       <div class="side-nav">
         <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
         <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
-        <button class="${D.tab==='customize'?'active':''}" data-tab="customize">🎨 Customize Store</button>
+        <button class="${D.tab==='advanced'?'active':''}" data-tab="advanced">📊 Analytics & tools</button>
         <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
       </div>
       <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
     </aside>
     <div class="dash-main">
-      <div class="mobile-dash-nav">${['orders','products','customize','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t==='customize'?'Customize':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
-      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='customize'?'Customize Theme & Sections':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}" target="_blank" rel="noopener">View store ↗</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      <div class="mobile-dash-nav" style="display:none;gap:6px;padding:12px 16px 0">${['orders','products','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
       <div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>
-      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='customize'?customizePanel(st):settingsPanel(st)}
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
 }
@@ -223,132 +239,19 @@ function ordersPanel(st){
 }
 function productsPanel(st){
   const f=D.form;
-  const form=f?`<form class="dashboard-card" id="pForm" style="margin-bottom:18px"><div class="row-head"><h2>${f.id?'Edit product':'Add product'}</h2><button class="btn small" type="button" data-act="cancelform">Close</button></div>
+  const form=f?`<form class="dashboard-card" id="pForm" style="margin:0 24px 18px;padding:24px"><div class="row-head"><h2>${f.id?'Edit product':'Add product'}</h2><button class="btn small" type="button" data-act="cancelform">Close</button></div>
     <label>Product name<input id="pName" maxlength="120" required value="${esc(f.name||'')}" placeholder="e.g. Wireless Earbuds"></label>
     <div class="two"><label>Price (Rs.)<input id="pPrice" type="number" min="1" inputmode="numeric" required value="${esc(f.price||'')}"></label><label>Compare-at price (Rs.)<input id="pOld" type="number" min="0" inputmode="numeric" value="${esc(f.old_price||'')}"></label></div>
     <div class="two"><label>Category<input id="pCat" maxlength="30" placeholder="Electronics, Fashion..." value="${esc(f.category||'')}"></label><label>Visibility<select id="pActive"><option value="true"${f.is_active!==false?' selected':''}>Visible in store</option><option value="false"${f.is_active===false?' selected':''}>Hidden</option></select></label></div>
     <div class="two"><label>SKU<input id="pSku" maxlength="40" value="${esc(f.sku||'')}" placeholder="Optional SKU"></label><label>Stock (empty = not tracked, 0 = sold out)<input id="pStock" type="number" min="0" value="${f.stock==null?'':esc(f.stock)}" placeholder="Not tracked"></label></div>
     <label>Variants <span class="fine" style="display:inline">(one per line, e.g. Red | Small | 799)</span><textarea id="pVariants" placeholder="Red | Small | 799\nBlue | Medium | 849">${esc((f.variants||[]).map(v=>[v.name||'',v.option||'',v.price||''].join(' | ')).join('\n'))}</textarea></label>
     <label>Description<textarea id="pDesc" maxlength="240" placeholder="Short product description">${esc(f.description||'')}</textarea></label>
-    <div class="img-pick"><div class="thumb" id="pThumb">${f.image_url?`<img src="${esc(f.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
+    <div class="img-pick" style="display:flex;gap:14px;align-items:center;padding:14px;margin-bottom:14px"><div class="thumb" id="pThumb" style="width:64px;height:64px;display:grid;place-items:center;background:#f3f5f4">${f.image_url?`<img src="${esc(f.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
     <div style="display:flex;gap:10px"><button class="btn primary" type="submit">Save product</button><button class="btn" type="button" data-act="cancelform">Cancel</button></div>
   </form>`:'';
-  const list=MY.products.length?`<div class="dashboard-card"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="dashboard-card empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
+  const list=MY.products.length?`<div class="panel-box"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell" style="display:flex;gap:10px;align-items:center"><div class="thumb" style="width:44px;height:44px;display:grid;place-items:center;background:#f3f5f4">${p.image_url?`<img src="${esc(p.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="panel-box empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
   return form+list;
 }
-
-/* ---------- customize theme & sections panel ---------- */
-function customizePanel(st){
-  const theme = st.theme || 'classic';
-  const sections = Array.isArray(st.sections) && st.sections.length ? st.sections : DEFAULT_SECTIONS;
-
-  const sectionRows = sections.map((sec, idx) => `
-    <div class="sec-item" data-sec-id="${esc(sec.id)}">
-      <div class="sec-item-head">
-        <label style="margin:0;display:flex;align-items:center;gap:8px;font-weight:600">
-          <input type="checkbox" class="sec-enable" ${sec.enabled ? 'checked' : ''}>
-          <span>${sec.type.toUpperCase()}: ${esc(sec.title || sec.type)}</span>
-        </label>
-        <div style="display:flex;gap:4px">
-          <button class="btn small" type="button" data-sec-act="up" ${idx===0?'disabled':''}>↑</button>
-          <button class="btn small" type="button" data-sec-act="down" ${idx===sections.length-1?'disabled':''}>↓</button>
-          <button class="btn small danger" type="button" data-sec-act="del">✕</button>
-        </div>
-      </div>
-      <div class="sec-item-body">
-        ${sec.type === 'hero' ? `
-          <label>Hero Title<input class="sec-field" data-f="title" value="${esc(sec.title||'')}"></label>
-          <label>Hero Subtitle<input class="sec-field" data-f="subtitle" value="${esc(sec.subtitle||'')}"></label>
-        ` : sec.type === 'announcement' ? `
-          <label>Announcement Text<input class="sec-field" data-f="text" value="${esc(sec.text||'')}"></label>
-        ` : sec.type === 'featured' ? `
-          <label>Section Title<input class="sec-field" data-f="title" value="${esc(sec.title||'')}"></label>
-          <label>Limit Products<input type="number" min="1" max="12" class="sec-field" data-f="limit" value="${sec.limit||4}"></label>
-        ` : sec.type === 'banner' ? `
-          <label>Banner Title<input class="sec-field" data-f="title" value="${esc(sec.title||'')}"></label>
-          <label>Banner Subtitle<input class="sec-field" data-f="subtitle" value="${esc(sec.subtitle||'')}"></label>
-          <label>Button Text<input class="sec-field" data-f="button_text" value="${esc(sec.button_text||'')}"></label>
-        ` : sec.type === 'grid' ? `
-          <label>Grid Section Title<input class="sec-field" data-f="title" value="${esc(sec.title||'')}"></label>
-        ` : `<span class="fine">Standard search section</span>`}
-      </div>
-    </div>
-  `).join('');
-
-  return `
-  <div class="panel-box">
-    <div class="row-head">
-      <h2>Theme & Styling</h2>
-      <a class="btn primary" href="#/s/${esc(st.slug)}" target="_blank" rel="noopener">Preview Store ↗</a>
-    </div>
-    <div class="theme-selector-grid">
-      <div class="theme-card ${theme==='classic'?'active':''}" data-theme-choice="classic">
-        <div class="theme-card-preview classic">
-          <div class="th-p-head"></div>
-          <div class="th-p-hero">Classic</div>
-          <div class="th-p-grid"><i></i><i></i></div>
-        </div>
-        <div class="theme-card-info">
-          <b>Classic Theme</b>
-          <p>Traditional e-commerce layout, clear cards & structured feel.</p>
-        </div>
-      </div>
-
-      <div class="theme-card ${theme==='minimal'?'active':''}" data-theme-choice="minimal">
-        <div class="theme-card-preview minimal">
-          <div class="th-p-head"></div>
-          <div class="th-p-hero">Minimal</div>
-          <div class="th-p-grid"><i></i><i></i></div>
-        </div>
-        <div class="theme-card-info">
-          <b>Minimal Theme</b>
-          <p>Clean, spacious typography, modern borderless layout.</p>
-        </div>
-      </div>
-
-      <div class="theme-card ${theme==='bold'?'active':''}" data-theme-choice="bold">
-        <div class="theme-card-preview bold">
-          <div class="th-p-head"></div>
-          <div class="th-p-hero">Bold</div>
-          <div class="th-p-grid"><i></i><i></i></div>
-        </div>
-        <div class="theme-card-info">
-          <b>Bold Theme</b>
-          <p>High-contrast, vibrant banners and energetic card styling.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel-box" style="margin-top:20px">
-    <div class="row-head">
-      <div>
-        <h2>Store Sections</h2>
-        <p class="fine">Enable, disable, reorder or edit layout sections for your homepage.</p>
-      </div>
-      <div style="display:flex;gap:8px">
-        <select id="addSecType" style="margin:0;max-width:160px">
-          <option value="hero">Hero Header</option>
-          <option value="announcement">Announcement</option>
-          <option value="featured">Featured Products</option>
-          <option value="banner">Promotional Banner</option>
-          <option value="search">Search Bar</option>
-          <option value="grid">All Products Grid</option>
-        </select>
-        <button class="btn" type="button" id="btnAddSec">+ Add Section</button>
-      </div>
-    </div>
-
-    <div id="secList" class="sec-list">
-      ${sectionRows}
-    </div>
-
-    <div style="margin-top:20px">
-      <button class="btn primary big" type="button" id="btnSaveCustomization">Save Theme & Sections</button>
-    </div>
-  </div>`;
-}
-
 function settingsPanel(st){
   return `<form class="panel-box" id="sForm">
     <div class="row-head"><h2>Store settings</h2></div>
@@ -379,87 +282,6 @@ function bindDash(){
     const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
     if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50);return}
     if(!st)return;
-
-    // Theme selection cards
-    const thCard = e.target.closest('[data-theme-choice]');
-    if(thCard){
-      $$('.theme-card').forEach(c=>c.classList.remove('active'));
-      thCard.classList.add('active');
-      return;
-    }
-
-    // Section reordering / deletion / addition
-    const secBtn = e.target.closest('[data-sec-act]');
-    if(secBtn){
-      const secItem = secBtn.closest('.sec-item');
-      const act = secBtn.dataset.sec-act;
-      if(act === 'del'){ secItem.remove(); }
-      if(act === 'up' && secItem.previousElementSibling){
-        secItem.parentNode.insertBefore(secItem, secItem.previousElementSibling);
-      }
-      if(act === 'down' && secItem.nextElementSibling){
-        secItem.parentNode.insertBefore(secItem.nextElementSibling, secItem);
-      }
-      return;
-    }
-
-    if(e.target.id === 'btnAddSec'){
-      const type = $('#addSecType').value;
-      const newSec = { id: 'sec-'+uid(), type, enabled: true, title: type.toUpperCase() + ' Title' };
-      const list = $('#secList');
-      if(list){
-        const div = document.createElement('div');
-        div.className = 'sec-item';
-        div.dataset.secId = newSec.id;
-        div.innerHTML = `
-          <div class="sec-item-head">
-            <label style="margin:0;display:flex;align-items:center;gap:8px;font-weight:600">
-              <input type="checkbox" class="sec-enable" checked>
-              <span>${type.toUpperCase()}: New ${type}</span>
-            </label>
-            <div style="display:flex;gap:4px">
-              <button class="btn small" type="button" data-sec-act="up">↑</button>
-              <button class="btn small" type="button" data-sec-act="down">↓</button>
-              <button class="btn small danger" type="button" data-sec-act="del">✕</button>
-            </div>
-          </div>
-          <div class="sec-item-body">
-            <label>Title<input class="sec-field" data-f="title" value="New ${type}"></label>
-          </div>`;
-        list.appendChild(div);
-      }
-      return;
-    }
-
-    if(e.target.id === 'btnSaveCustomization'){
-      const activeTh = $('.theme-card.active');
-      const themeChoice = activeTh ? activeTh.dataset.themeChoice : 'classic';
-
-      const secItems = $$('.sec-item');
-      const updatedSections = secItems.map(item => {
-        const id = item.dataset.secId;
-        const enabled = item.querySelector('.sec-enable').checked;
-        const type = id.split('-')[1] || 'custom';
-        const secObj = { id, type, enabled };
-        item.querySelectorAll('.sec-field').forEach(input => {
-          const field = input.dataset.f;
-          secObj[field] = input.type === 'number' ? parseInt(input.value,10) : input.value.trim();
-        });
-        return secObj;
-      });
-
-      await busy(e.target, async () => {
-        ok(await sb.from('stores').update({
-          theme: themeChoice,
-          sections: updatedSections
-        }).eq('id', st.id));
-        st.theme = themeChoice;
-        st.sections = updatedSections;
-        toast('Theme & Sections updated successfully!');
-      });
-      return;
-    }
-
     const ed=e.target.closest('[data-edit]');if(ed){D.form={...MY.products.find(x=>x.id===ed.dataset.edit)};D.file=null;renderDash();$('#pForm')&&$('#pForm').scrollIntoView();return}
     const dl=e.target.closest('[data-del]');
     if(dl){const p=MY.products.find(x=>x.id===dl.dataset.del);
@@ -470,7 +292,6 @@ function bindDash(){
     if(act==='addproduct'){D.form={};D.file=null;renderDash();$('#pName')&&$('#pName').focus()}
     if(act==='cancelform'){D.form=null;D.file=null;renderDash()}
     if(act==='refresh')await busy(a,async()=>{await loadStoreData();renderDash();toast('Updated')});
-    if(act==='newstore'){location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50)}
     if(act==='copy'){const url=location.href.split('#')[0]+'#/s/'+st.slug;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Store link copied'),()=>toast(url))}
     if(act==='delstore'&&confirm('Delete "'+st.name+'" with all its products and orders? This cannot be undone.'))
       await busy(a,async()=>{ok(await sb.from('stores').delete().eq('id',st.id));MY.active=null;await loadDash();toast('Store deleted')});
@@ -479,7 +300,7 @@ function bindDash(){
     if(e.target.id==='storeSel'){MY.active=e.target.value;D.form=null;await loadStoreData();renderDash();return}
     if(e.target.dataset.status){const o=MY.orders.find(x=>x.id===e.target.dataset.status);
       if(o)await busy(e.target,async()=>{ok(await sb.from('orders').update({status:e.target.value}).eq('id',o.id));o.status=e.target.value;renderDash();toast('Order #'+o.order_no+' marked '+o.status)});return}
-    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="">'})}
+    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="" style="width:100%;height:100%;object-fit:cover">'})}
   });
   el.addEventListener('submit',async e=>{
     e.preventDefault();const st=curS();const btn=e.submitter;
@@ -489,7 +310,8 @@ function bindDash(){
       await busy(btn,async()=>{
         let image_url=D.form.image_url||'';
         if(D.file)image_url=await uploadImage(D.file);
-        const variants=$('#pVariants').value.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split('|').map(v=>v.trim());return {name:a[0]||'',option:a[1]||'',price:parseInt(a[2],10)||price}}); const row={store_id:st.id,name:$('#pName').value.trim(),price,old_price:parseInt($('#pOld').value,10)||0,category:$('#pCat').value.trim(),description:$('#pDesc').value.trim(),image_url,is_active:$('#pActive').value==='true',sku:$('#pSku').value.trim(),stock:$('#pStock').value.trim()===''?null:Math.max(0,parseInt($('#pStock').value,10)||0),variants};
+        const variants=$('#pVariants').value.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split('|').map(v=>v.trim());return {name:a[0]||'',option:a[1]||'',price:parseInt(a[2],10)||price}});
+        const row={store_id:st.id,name:$('#pName').value.trim(),price,old_price:parseInt($('#pOld').value,10)||0,category:$('#pCat').value.trim(),description:$('#pDesc').value.trim(),image_url,is_active:$('#pActive').value==='true',sku:$('#pSku').value.trim(),stock:$('#pStock').value.trim()===''?null:Math.max(0,parseInt($('#pStock').value,10)||0),variants};
         ok(D.form.id?await sb.from('products').update(row).eq('id',D.form.id):await sb.from('products').insert(row));
         D.form=null;D.file=null;await loadStoreData();renderDash();toast('Product saved');
       });
@@ -572,7 +394,6 @@ function addToCart(pid,variant){
   x?x.qty=Math.min(99,x.qty+1):c.push({id:pid,qty:1,variant:variant||''});
   setCart(c);drawCart();return true;
 }
-
 async function renderStore(slug){
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
@@ -588,36 +409,17 @@ async function renderStore(slug){
   if(!st){el.innerHTML='<div class="wrap empty" style="padding-top:80px"><h2>Store not found</h2><p>Check the link, or ask the seller to send it again.</p><a class="btn primary" href="#/">Back to EasyBuy</a></div>';return}
   SF={store:st,products:prods,reviews:revs,q:'',cat:'',quote:null,country:''};
   {const saved=lsGet('eb.country.'+st.id),ml=marketList(st);SF.country=ml.some(m=>m.country===saved)?saved:homeCountry(st)}
-  
   document.title=st.name+' on EasyBuy';
   el.style.setProperty('--accent',st.color);el.style.setProperty('--on-accent',ink(st.color));
-
-  const activeTheme = st.theme || 'classic';
-  el.className = 'theme-' + activeTheme;
-
-  const sections = Array.isArray(st.sections) && st.sections.length ? st.sections : DEFAULT_SECTIONS;
-
-  let sectionsHTML = '';
-  sections.filter(s => s.enabled).forEach(sec => {
-    if(sec.type === 'hero'){
-      sectionsHTML += `<section class="sf-hero"><div class="wrap"><h1>${esc(sec.title || st.name)}</h1><p>${esc(sec.subtitle || st.tagline || '')}</p><div class="sf-trust" id="sfTrust"></div></div></section>`;
-    } else if(sec.type === 'announcement'){
-      sectionsHTML += `<div class="sf-announcement"><div class="wrap">${esc(sec.text || '')}</div></div>`;
-    } else if(sec.type === 'search'){
-      sectionsHTML += `<div class="wrap sf-main-search" style="padding-top:20px"><input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products"><div class="sf-tools"><div class="cat-filter" id="sfCats"></div></div></div>`;
-    } else if(sec.type === 'featured'){
-      sectionsHTML += `<section class="sf-featured-section"><div class="wrap"><h2 class="sec-title">${esc(sec.title || 'Featured Products')}</h2><div class="grid sf-featured-grid" data-limit="${sec.limit||4}"></div></div></section>`;
-    } else if(sec.type === 'banner'){
-      sectionsHTML += `<section class="sf-promo-banner"><div class="wrap"><div class="promo-inner"><h2>${esc(sec.title || '')}</h2><p>${esc(sec.subtitle || '')}</p><a href="#sfGrid" class="btn accent">${esc(sec.button_text || 'Shop Now')}</a></div></div></section>`;
-    } else if(sec.type === 'grid'){
-      sectionsHTML += `<div class="wrap sf-main"><h2 class="sec-title" style="margin-bottom:16px">${esc(sec.title || 'All Products')}</h2><div class="grid" id="sfGrid"></div></div>`;
-    }
-  });
-
   el.innerHTML=`
   <div class="eb-bar">You are viewing ${esc(st.name)} on EasyBuy.<a href="#/dashboard">Seller dashboard</a><a href="#/">EasyBuy home</a></div>
-  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart">Cart <span id="sfCount">0</span></button></div></div></header>
-  ${sectionsHTML}
+  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right" style="display:flex;gap:8px;align-items:center">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country" style="width:auto;margin:0">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart" style="background:var(--accent);color:var(--on-accent)">Cart <span id="sfCount">0</span></button></div></div></header>
+  <section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(st.tagline||'')}</p>
+    <div class="sf-trust" id="sfTrust"></div></div></section>
+  <div class="wrap sf-main">
+    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products">
+    <div class="sf-tools" style="margin:14px 0 22px"><div class="cat-filter" id="sfCats"></div></div><div class="grid" id="sfGrid"></div>
+  </div>
   <footer class="sf-foot"><div class="wrap">Store powered by EasyBuy.</div></footer>
   <div class="drawer" id="sfDrawer"><aside class="sheet" role="dialog" aria-label="Your cart">
     <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart" aria-label="Close cart">Close</button></div>
@@ -636,75 +438,57 @@ async function renderStore(slug){
       <label>Payment method<select id="cPay"></select></label>
       <div id="payInfo"></div>
       <button class="btn accent big" type="submit" id="placeBtn">Place order</button>
-      <a class="fine" href="#/track" data-track-store style="display:block;margin-top:12px">Track an existing order</a>
+      <a class="fine" href="#/track" style="display:block;margin-top:12px">Track an existing order</a>
     </form>
   </aside></div>
   <div class="modal" id="sfDone"><div class="box"><h2 id="doneTitle">Order placed</h2><p id="doneText"></p>
     <a class="btn primary" id="doneWa" target="_blank" rel="noopener" href="#">Send order on WhatsApp</a>
     <button class="btn" data-sf="closedone">Continue shopping</button></div></div>
   <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div id="pmBody"></div></div></div>`;
-
   syncCheckout();drawGrid();drawCart();
 }
-
 function drawGrid(){
   const st=SF.store,q=SF.q.toLowerCase();
   const cats=[...new Set(SF.products.map(p=>p.category).filter(Boolean))];
   const cf=$('#sfCats'); if(cf)cf.innerHTML=`<button class="active" data-catfilter="">All</button>`+cats.map(c=>`<button data-catfilter="${esc(c)}">${esc(c)}</button>`).join('');
   const activeCat=SF.cat||'';
   if(cf)cf.querySelectorAll('[data-catfilter]').forEach(b=>b.classList.toggle('active',b.dataset.catfilter===activeCat));
-  
   const list=SF.products.filter(p=>(!activeCat||p.category===activeCat)&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(q));
-
-  const renderCard = p => {
+  $('#sfGrid').innerHTML=list.map(p=>{
     const vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id);
-    const badge=isSold(p)?'<span class="chipbadge sold">Sold out</span>':lowStock(p)?`<span class="chipbadge low">Only ${p.stock} left</span>`:'';
+    const badge=isSold(p)?'<span class="chipbadge st-Cancelled">Sold out</span>':lowStock(p)?`<span class="chipbadge st-New">Only ${p.stock} left</span>`:'';
     const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>'
-      :vs.length?`<button class="btn accent" data-product="${p.id}">Choose option</button>`
-      :`<button class="btn accent" data-add="${p.id}">Add to cart</button>`;
+      :vs.length?`<button class="btn accent" data-product="${p.id}" style="background:var(--accent);color:var(--on-accent)">Choose option</button>`
+      :`<button class="btn accent" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)">Add to cart</button>`;
     return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button>
     <div class="body">${badge}${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3>
-    ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
+    ${rt?`<div class="rating" style="color:#f5a623;font-size:12px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
     <div class="desc">${esc(p.description||'')}</div>
-    <div class="price">${priceHtml(p)}</div>${btn}</div></article>`;
-  };
-
-  const gridEl = $('#sfGrid');
-  if(gridEl){
-    gridEl.innerHTML=list.map(renderCard).join('')
-      ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
-  }
-
-  const featGrid = $('.sf-featured-grid');
-  if(featGrid){
-    const limit = parseInt(featGrid.dataset.limit || 4, 10);
-    const featList = list.slice(0, limit);
-    featGrid.innerHTML = featList.map(renderCard).join('');
-  }
+    <div class="price">${priceHtml(p)}</div>${btn}</div></article>`}).join('')
+    ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
 }
-
 function openProduct(p){
   const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
-  const note=isSold(p)?'<p class="stock-note out">Sold out</p>':lowStock(p)?`<p class="stock-note low">Only ${p.stock} left</p>`:'';
+  const note=isSold(p)?'<p class="stock-note out" style="color:var(--danger)">Sold out</p>':lowStock(p)?`<p class="stock-note low" style="color:var(--warning)">Only ${p.stock} left</p>`:'';
   $('#pmBody').innerHTML=`
-  <div class="product-modal-inner"><div class="product-modal-pic">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:(CATS[st.category]||'🛍️')}</div>
-  <div>${p.old_price>p.price?'<span class="badge-sale">SALE</span>':''}
+  <div class="product-modal-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div class="product-modal-pic" style="background:#f3f5f4;border-radius:18px;display:grid;place-items:center;min-height:280px;font-size:60px">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:(CATS[st.category]||'🛍️')}</div>
+  <div>${p.old_price>p.price?'<span class="pill st-New">SALE</span>':''}
     <h2 style="margin-top:10px">${esc(p.name)}</h2>
-    ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
+    ${rt?`<div class="rating" style="color:#f5a623;font-size:13px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
     <div class="price" id="pmPrice">${priceHtml(p)}</div>
     ${vs.length?`<label style="margin-top:10px">Choose an option<select id="pmVariant"><option value="">Select...</option>${vs.map(v=>`<option value="${esc(varLabel(v))}">${esc(varLabel(v))}${v.price>0&&v.price!==p.price?' ('+money(v.price)+')':''}</option>`).join('')}</select></label>`:''}
     ${note}
-    <p class="fine" style="font-size:15px;line-height:1.7">${esc(p.description||'No description available.')}</p>
-    <button class="btn accent big buy" id="pmAdd" data-add="${p.id}"${isSold(p)?' disabled':''}>${isSold(p)?'Sold out':'Add to cart'}</button></div></div>
-  <div class="reviews-box"><h3>Reviews</h3>
-    ${mine.length?mine.map(r=>`<div class="rv"><b>${esc(r.customer_name)}</b> <span class="rating">${stars(r.rating)}</span><p>${esc(r.body||'')}</p></div>`).join(''):'<p class="fine">No reviews yet.</p>'}
+    <p class="fine" style="font-size:14px;line-height:1.7">${esc(p.description||'No description available.')}</p>
+    <button class="btn accent big buy" id="pmAdd" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)"${isSold(p)?' disabled':''}>${isSold(p)?'Sold out':'Add to cart'}</button></div></div>
+  <div class="reviews-box" style="margin-top:24px;padding-top:18px;border-top:1px solid var(--line-soft)"><h3>Reviews</h3>
+    ${mine.length?mine.map(r=>`<div class="rv" style="padding:12px 0;border-bottom:1px solid var(--line-soft)"><b>${esc(r.customer_name)}</b> <span class="rating" style="color:#f5a623">${stars(r.rating)}</span><p style="margin:6px 0 0;color:var(--muted);font-size:13px">${esc(r.body||'')}</p></div>`).join(''):'<p class="fine">No reviews yet.</p>'}
     <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Write a review</summary>
     <form id="rvForm" data-pid="${p.id}" style="margin-top:12px">
       <label>Your name<input id="rvName" required maxlength="60"></label>
       <label>Phone used on your order<input id="rvPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label>
       <label>Rating<select id="rvRating"><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option></select></label>
       <label>Comment (optional)<textarea id="rvBody" maxlength="500"></textarea></label>
-      <button class="btn accent" type="submit">Send review</button>
+      <button class="btn accent" type="submit" style="background:var(--accent);color:var(--on-accent)">Send review</button>
       <p class="fine">Only customers who ordered this product can review it. The seller approves reviews before they show.</p>
     </form></details></div>`;
   $('#sfProduct').classList.add('open');
@@ -715,7 +499,7 @@ function drawCart(){
   if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfQuote').innerHTML='';$('#sfForm').hidden=true;return}
   $('#sfForm').hidden=false;
   $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);
-    return `<div class="ci"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one">+</button></div></div>`}).join('');
+    return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty" style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one" style="border:0;background:transparent;cursor:pointer">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one" style="border:0;background:transparent;cursor:pointer">+</button></div></div>`}).join('');
   refreshQuote();
 }
 let quoteT;
@@ -724,7 +508,7 @@ function refreshQuote(){
   quoteT=setTimeout(async()=>{
     const box=$('#sfQuote');if(!box||!SF.store)return;
     const c=validCart();if(!c.length){box.innerHTML='';return}
-    const code=($('#cCoupon')&&$('#cCoupon').value\vert{}\vert{}'').trim(),msg=$('#couponMsg');
+    const code=($('#cCoupon')&&$('#cCoupon').value||'').trim(),msg=$('#couponMsg');
     const r=await sb.rpc('quote_cart',{p_store:SF.store.id,p_items:c.map(cartItem),p_coupon:code,p_country:SF.country});
     let q;
     if(r.error){
@@ -737,7 +521,7 @@ function refreshQuote(){
     }else q=r.data[0];
     SF.quote=q;
     const F=n=>fmtCur(n,q.currency||curMarket().currency);
-    box.innerHTML=`<div class="qrow"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot"><span>Total</span><span>${F(q.total)}</span></div>`;
+    box.innerHTML=`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot" style="display:flex;justify-content:space-between;padding:12px;margin-bottom:6px;font-weight:700"><span>Total</span><span>${F(q.total)}</span></div>`;
     if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
   },250);
 }
@@ -747,7 +531,7 @@ function payInfo(){
   if(m==='bank')t=st.bank_details?'Bank details:\n'+st.bank_details:'The seller will share bank details on WhatsApp.';
   if(m==='easypaisa')t=st.easypaisa_number?'Send payment to Easypaisa: '+st.easypaisa_number:'The seller will share Easypaisa details on WhatsApp.';
   if(m==='jazzcash')t=st.jazzcash_number?'Send payment to JazzCash: '+st.jazzcash_number:'The seller will share JazzCash details on WhatsApp.';
-  box.innerHTML=m==='cod'?'':`<div class="payinfo">${esc(t)}</div><label>Transaction ID (after you pay)<input id="cPayNote" maxlength="200" placeholder="Optional, you can also send it on WhatsApp"></label>`;
+  box.innerHTML=m==='cod'?'':`<div class="payinfo" style="padding:12px;margin-bottom:10px;background:#f6f7f7;border-radius:12px;white-space:pre-wrap">${esc(t)}</div><label>Transaction ID (after you pay)<input id="cPayNote" maxlength="200" placeholder="Optional, you can also send it on WhatsApp"></label>`;
   btn.textContent=m==='cod'?'Place order, pay on delivery':'Place order';
 }
 function syncCheckout(){
@@ -756,10 +540,7 @@ function syncCheckout(){
   sel.innerHTML=methods.map(x=>`<option value="${esc(x)}">${esc(payLabel(x))}</option>`).join('');
   sel.value=methods.includes(keep)?keep:methods[0];
   const n=(st.markets||[]).length;
-  const trustEl = $('#sfTrust');
-  if(trustEl){
-    trustEl.innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
-  }
+  $('#sfTrust').innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
   const intl=m.country!==homeCountry(st),c=countryOf(m.country);
   $('#cIntl').hidden=!intl;$('#cPostal').required=intl;
   $('#cShipTo').textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
@@ -834,7 +615,7 @@ function bindStore(){
       try{SF.products=ok(await sb.from('products').select('*').eq('store_id',st.id).eq('is_active',true).order('created_at'))}catch(err){}
       syncCheckout();drawGrid();drawCart();
       const cc=row.o_currency||mk.currency,F=n=>fmtCur(n,cc);
-      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}${state?', '+state:''}${postal?' '+postal:''}\nCountry: ${countryName(mk.country)}\nItems: ${items}\nDiscount: ${F(row.o_m_discount!=null?row.o_m_discount:(row.o_discount||0))}\nShipping: ${F(row.o_shipping!=null?row.o_shipping:(row.o_shipping||0))}\nTotal: ${F(row.o_charged!=null?row.o_charged:row.o_total)}\nPayment: ${payLabel(pay)}${note?' (ref '+note+')':''}`;
+      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}${state?', '+state:''}${postal?' '+postal:''}\nCountry: ${countryName(mk.country)}\nItems: ${items}\nDiscount: ${F(row.o_m_discount!=null?row.o_m_discount:(row.o_discount||0))}\nShipping: ${F(row.o_m_shipping!=null?row.o_m_shipping:(row.o_shipping||0))}\nTotal: ${F(row.o_charged!=null?row.o_charged:row.o_total)}\nPayment: ${payLabel(pay)}${note?' (ref '+note+')':''}`;
       $('#doneTitle').textContent='Order #'+row.o_no+' placed';
       $('#doneText').textContent=pay==='cod'?'Please keep '+F(row.o_charged!=null?row.o_charged:row.o_total)+' ready. You pay the rider in cash when the parcel arrives.':'Please send '+F(row.o_charged!=null?row.o_charged:row.o_total)+' with '+payLabel(pay)+' and share the transaction ID on WhatsApp. The seller confirms your order once the payment arrives. Save your order number to track it.';
       $('#doneWa').href='https://wa.me/'+waNum(st.whatsapp)+'?text='+encodeURIComponent(msg);
@@ -843,16 +624,15 @@ function bindStore(){
   });
 }
 
-
-/* ---------- markets (international selling) ---------- */
+/* ---------- markets ---------- */
 function marketsCard(st){
   const home=st.home_country||'PK',cur=st.currency||'PKR',ms=Array.isArray(st.markets)?st.markets:[];
   const used=new Set([home,...ms.map(m=>m.country)]);
   const opts=COUNTRIES.filter(c=>!used.has(c.code)).map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('');
   const rows=ms.map(m=>`<tr><td>${esc(countryName(m.country))}</td><td>${esc(m.currency)}</td><td>1 ${esc(m.currency)} = ${Number((1/m.rate).toPrecision(6))} ${esc(cur)}</td><td>${fmtCur(m.shipping,m.currency)}</td><td>${m.free_min>0?fmtCur(m.free_min,m.currency):'Never'}</td><td>${(m.payment_methods||[]).map(payLabel).join(', ')}</td><td><button class="btn small danger" data-market-del="${esc(m.country)}">Remove</button></td></tr>`).join('');
-  return `<section class="advanced-card" style="margin-top:16px" id="marketsCard"><h2>International selling (Markets)</h2>
-  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to. Each market has its own currency, shipping fee and payment methods. Customers pick their country in your store and see prices in that currency.</p>
-  <form id="homeForm" class="advanced-form"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn">Save home country</button> <span class="fine">Changing the currency does not convert your existing prices.</span></div></form>
+  return `<section class="advanced-card" style="margin-top:16px;padding:24px" id="marketsCard"><h2>International selling (Markets)</h2>
+  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to. Each market has its own currency, shipping fee and payment methods.</p>
+  <form id="homeForm" class="advanced-form" style="margin-top:16px"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn primary">Save home country</button> <span class="fine">Changing the currency does not convert your existing prices.</span></div></form>
   <div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Country</th><th>Currency</th><th>Rate</th><th>Shipping</th><th>Free above</th><th>Payments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7">No international markets yet.</td></tr>'}</tbody></table></div>
   ${opts?`<h3 style="margin:18px 0 8px">Add a market</h3>
   <form id="marketForm" class="advanced-form"><label>Country<select id="mkCountry">${opts}</select></label><label>Currency<input id="mkCurrency" maxlength="3" required value="${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'')}"></label>
@@ -887,7 +667,7 @@ document.addEventListener('submit',async e=>{
     const pays=[...$('#mkPay').selectedOptions].map(x=>x.value);
     if(!pays.length){toast('Choose at least one payment method');return}
     const m={country:$('#mkCountry').value,currency:$('#mkCurrency').value.trim().toUpperCase(),rate:Number((1/inv).toPrecision(8)),
-      shipping:Math.max(0,parseFloat($('#mkShip').value)\vert{}\vert{}0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
+      shipping:Math.max(0,parseFloat($('#mkShip').value)||0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
     await busy(e.submitter,()=>saveStoreFields({markets:[...(st.markets||[]),m]},'Market added'));
   }
 });
@@ -898,18 +678,7 @@ document.addEventListener('click',async e=>{
   await busy(d,()=>saveStoreFields({markets:(st.markets||[]).filter(m=>m.country!==d.dataset.marketDel)},'Market removed'));
 });
 
-/* ---------- start ---------- */
-(async function init(){
-  initBuilder();bindDash();bindStore();
-  if(!configured)$('#setup').hidden=false;
-  else{
-    try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
-    sb.auth.onAuthStateChange((_e,s)=>{USER=s?s.user:null;paintNav()});
-  }
-  paintNav();route();
-})();
-
-/* ---------- Stage 4/5 advanced layer ---------- */
+/* ---------- advanced layer ---------- */
 const ADV={extra:{customers:[],coupons:[],reviews:[],profile:null}};
 async function loadAdvanced(){
   if(!sb||!USER||!MY.active)return;
@@ -921,78 +690,65 @@ async function loadAdvanced(){
   ]);
   ADV.extra.customers=cu.error?[]:cu.data||[]; ADV.extra.coupons=co.error?[]:co.data||[]; ADV.extra.reviews=re.error?[]:re.data||[]; ADV.extra.profile=pr.error?null:pr.data;
 }
-function advNav(){
-  const side=$('.side-nav'); if(!side)return;
-  if(!side.querySelector('[data-tab="advanced"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='advanced'?'active':'')+'" data-tab="advanced">📊 Analytics & tools</button>');
-  if(ADV.extra.profile?.role==='admin'&&!side.querySelector('[data-tab="admin"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='admin'?'active':'')+'" data-tab="admin">🛡️ Platform admin</button>');
-}
 function advMetrics(st){
   const orders=MY.orders.filter(o=>o.status!=='Cancelled'), revenue=orders.reduce((a,o)=>a+o.total,0), avg=orders.length?Math.round(revenue/orders.length):0;
   const delivered=MY.orders.filter(o=>o.status==='Delivered').length, low=MY.products.filter(p=>p.stock!=null&&p.stock<=5).length;
   const byCity={}; orders.forEach(o=>byCity[o.city]=(byCity[o.city]||0)+o.total);
   const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,6), max=topCities[0]?.[1]||1;
   return `<div class="metric-grid"><div class="metric"><b>${money(revenue)}</b><span>Gross revenue</span></div><div class="metric"><b>${orders.length}</b><span>Active orders</span></div><div class="metric"><b>${money(avg)}</b><span>Average order</span></div><div class="metric"><b>${low}</b><span>Low-stock products</span></div></div>
-  <div class="advanced-grid"><section class="advanced-card"><h2>Sales by city</h2><p class="fine">Based on orders in this store.</p>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}\%"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
-  <section class="advanced-card"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row"><span>${x}</span><div class="bar"><i style="width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}\%"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
+  <div class="advanced-grid" style="margin-top:16px"><section class="advanced-card" style="padding:24px"><h2>Sales by city</h2><p class="fine">Based on orders in this store.</p>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row" style="margin:8px 0"><span>${esc(c)}</span><div class="bar"><i style="display:block;height:100%;width:${Math.round(v/max*100)}%;border-radius:999px"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
+  <section class="advanced-card" style="padding:24px"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row" style="margin:8px 0"><span>${x}</span><div class="bar"><i style="display:block;height:100%;width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%;border-radius:999px"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
 }
 function advancedPanel(st){
   const coupons=ADV.extra.coupons||[], customers=ADV.extra.customers||[], reviews=ADV.extra.reviews||[];
   const prodRows=MY.products.map(p=>`<tr><td>${esc(p.name)}</td><td><input class="stock-input" data-stock="${p.id}" type="number" min="0" value="${p.stock==null?'':p.stock}" placeholder="Not tracked" style="max-width:130px"></td><td>${p.sku?esc(p.sku):'—'}</td><td>${p.is_active?'Visible':'Hidden'}</td></tr>`).join('');
   const couponRows=coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td>${c.active?'Active':'Off'}</td><td><button class="btn small danger" data-coupon-del="${c.id}">Delete</button></td></tr>`).join('');
   const customerRows=customers.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('');
-  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
+  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td style="color:#f5a623">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
   return `${advMetrics(st)}
   <div class="advanced-grid" style="margin-top:16px">
-    <section class="advanced-card"><h2>Inventory</h2><p class="fine">Leave a box empty for products you do not track. 0 means sold out. Save quantities per product.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
-    <section class="advanced-card"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed (${esc((curS()&&curS().currency)||'PKR')})</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
-    <section class="advanced-card"><h2>Customers</h2><p class="fine">Returning buyers and their order value.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
-    <section class="advanced-card"><h2>Reviews</h2><p class="fine">Approve reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card" style="padding:24px"><h2>Inventory</h2><p class="fine">Leave a box empty for products you do not track. 0 means sold out.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
+    <section class="advanced-card" style="padding:24px"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed (${esc((curS()&&curS().currency)||'PKR')})</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card" style="padding:24px"><h2>Customers</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card" style="padding:24px"><h2>Reviews</h2><p class="fine">Approve reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
   </div>
-  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee (${esc(st.currency||'PKR')})<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (${esc(st.currency||'PKR')})<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Theme<select id="storeTheme"><option value="classic" ${st.theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${st.theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${st.theme==='bold'?'selected':''}>Bold</option></select></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
-}
-async function adminPanel(){
-  const all=await Promise.all([
-    sb.from('stores').select('id,name,slug,owner_id,created_at,published').order('created_at',{ascending:false}).limit(500),
-    sb.from('orders').select('id,store_id,total,status,created_at').order('created_at',{ascending:false}).limit(1000),
-    sb.from('products').select('id,store_id,is_active,stock').limit(2000),
-    sb.from('profiles').select('id,full_name,phone,role,created_at').order('created_at',{ascending:false}).limit(500)
-  ]);
-  const stores=all[0].error?[]:all[0].data||[], orders=all[1].error?[]:all[1].data||[], products=all[2].error?[]:all[2].data||[], profiles=all[3].error?[]:all[3].data||[];
-  const rev=orders.filter(o=>o.status!=='Cancelled').reduce((a,o)=>a+o.total,0);
-  return `<div class="admin-banner"><b>Platform admin.</b> This area is for EasyBuy operators. Seller dashboards remain isolated by store ownership.</div><div class="metric-grid"><div class="metric"><b>${stores.length}</b><span>Stores</span></div><div class="metric"><b>${profiles.length}</b><span>Users</span></div><div class="metric"><b>${products.length}</b><span>Products</span></div><div class="metric"><b>${money(rev)}</b><span>Order value</span></div></div><div class="advanced-grid"><section class="advanced-card"><h2>Stores</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Store</th><th>Slug</th><th>Published</th></tr></thead><tbody>${stores.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.slug)}</td><td><button class="btn small" data-publish="${s.id}" data-value="${s.published?'false':'true'}">${s.published?'Unpublish':'Publish'}</button></td></tr>`).join('')}</tbody></table></div></section><section class="advanced-card"><h2>Users</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>ID</th><th>Role</th><th>Name</th></tr></thead><tbody>${profiles.map(p=>`<tr><td>${esc(p.id.slice(0,8))}…</td><td><span class="pill">${esc(p.role)}</span></td><td>${esc(p.full_name||'—')}</td></tr>`).join('')}</tbody></table></div></section></div>`;
+  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px;padding:24px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee (${esc(st.currency||'PKR')})<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (${esc(st.currency||'PKR')})<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Theme<select id="storeTheme"><option value="classic" ${st.theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${st.theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${st.theme==='bold'?'selected':''}>Bold</option></select></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
 }
 const _renderDash=renderDash;
-renderDash=async function(){
-  await _renderDash();
-  await loadAdvanced();
-  advNav();
+renderDash=function(){
+  _renderDash();
   if(D.tab==='advanced'&&curS()){
-    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="mobile-dash-nav"><button class="btn small" data-tab="orders">Orders</button><button class="btn small" data-tab="products">Products</button><button class="btn small" data-tab="customize">Customize</button><button class="btn small" data-tab="advanced">Analytics & tools</button><button class="btn small" data-tab="settings">Settings</button></div><div class="dash-top"><div><h1>Analytics & tools</h1><p>Inventory, customers, coupons, reviews and commerce settings.</p></div><a class="btn" href="#/s/${esc(curS().slug)}">View store</a></div>${advancedPanel(curS())}`;
-  }
-  if(D.tab==='admin'&&ADV.extra.profile?.role==='admin'){
-    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="dash-top"><div><h1>Platform admin</h1><p>Manage EasyBuy at platform level.</p></div></div>${await adminPanel()}`;
+    loadAdvanced().then(()=>{
+      const main=$('.dash-main'); if(main) main.innerHTML=`<div class="mobile-dash-nav" style="display:none;gap:6px;padding:12px 16px 0"><button class="btn small" data-tab="orders">Orders</button><button class="btn small" data-tab="products">Products</button><button class="btn small primary" data-tab="advanced">Analytics</button><button class="btn small" data-tab="settings">Settings</button></div><div class="dash-top"><div><h1>Analytics & tools</h1><p>Inventory, customers, coupons, reviews and commerce settings.</p></div><a class="btn" href="#/s/${esc(curS().slug)}">View store</a></div>${advancedPanel(curS())}`;
+    });
   }
 };
-
-// Advanced interactions
 addEventListener('click',async e=>{
   const stock=e.target.closest('#saveInventory');
   if(stock){await busy(stock,async()=>{for(const i of $$('.stock-input')){const p=MY.products.find(x=>x.id===i.dataset.stock);if(p){const n=i.value.trim()===''?null:Math.max(0,parseInt(i.value,10)||0);await sb.from('products').update({stock:n}).eq('id',p.id)}}await loadStoreData();await loadAdvanced();renderDash();toast('Inventory saved')});return}
   const cd=e.target.closest('[data-coupon-del]'); if(cd){await busy(cd,async()=>{await sb.from('coupons').delete().eq('id',cd.dataset.couponDel);await loadAdvanced();renderDash();toast('Coupon deleted')});return}
   const rv=e.target.closest('[data-review]'); if(rv){await busy(rv,async()=>{await sb.from('reviews').update({approved:rv.dataset.approved==='true'}).eq('id',rv.dataset.review);await loadAdvanced();renderDash();toast('Review updated')});return}
-  const pb=e.target.closest('[data-publish]'); if(pb&&ADV.extra.profile?.role==='admin'){await busy(pb,async()=>{ok(await sb.rpc('admin_set_store_published',{p_store:pb.dataset.publish,p_published:pb.dataset.value==='true'}));toast('Store visibility updated');renderDash()});return}
 });
 addEventListener('submit',async e=>{
   if(e.target.id==='couponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#cpCode').value.trim().toUpperCase();const type=$('#cpType').value;const val=Math.max(1,parseInt($('#cpValue').value,10)||0);const min=Math.max(0,parseInt($('#cpMin').value,10)||0);const lim=Math.max(0,parseInt($('#cpLimit').value,10)||0);const ex=$('#cpExpiry').value?new Date($('#cpExpiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();renderDash();toast('Coupon created')});return}
-  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)\vert{}\vert{}0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),theme:$('#storeTheme').value,payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
+  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),theme:$('#storeTheme').value,payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
 });
 
-// Order tracking page
+/* ---------- order tracking ---------- */
 function renderTrack(){
-  const el=$('#v-login'); el.hidden=false; $('#v-home').hidden=true; $('#v-dashboard').hidden=true; $('#v-store').hidden=true; $('#siteHeader').hidden=false; $('#siteFooter').hidden=true;
-  el.innerHTML=`<div class="wrap track-wrap"><div class="builder"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store link slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult"></div></div></div>`;
+  const el=$('#v-track');
+  if(!el)return;
+  el.innerHTML=`<div class="wrap" style="padding:60px 0 80px;min-height:calc(100vh - 110px)"><div class="builder" style="max-width:560px;margin-inline:auto"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult" style="margin-top:16px"></div></div></div>`;
 }
-addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div class="track-result"><b>Order #${x.order_no} from ${esc(st.name)}</b><p>Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div class="track-result">Order not found. Check the store slug, order number and phone number.</div>'})});
+addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fafcfb"><b>Order #${x.order_no} from ${esc(st.name)}</b><p style="margin:8px 0 0;color:var(--muted)">Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff3f0;color:#9e2a0e">Order not found. Check the store slug, order number and phone number.</div>'})});
 
-const _route=route;
-route=function(){const h=location.hash||'#/';if(h==='#/track'){renderTrack();return}_route()};
+/* ---------- start ---------- */
+(async function init(){
+  initBuilder();initFeatureTabs();bindDash();bindStore();
+  if(!configured)$('#setup').hidden=false;
+  else{
+    try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
+    sb.auth.onAuthStateChange((_e,s)=>{USER=s?s.user:null;paintNav()});
+  }
+  paintNav();route();
+})();
