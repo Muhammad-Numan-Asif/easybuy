@@ -245,6 +245,34 @@ function renderDash(){
       ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='code'?codePanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
+
+  /* ---------- Auto-load preview iframes AFTER data is ready ---------- */
+  if(D.tab==='design' && st){
+    const previewBody=$('#designerPreviewBody');
+    if(previewBody){
+      setTimeout(()=>{
+        previewBody.innerHTML='';
+        const iframe=document.createElement('iframe');
+        iframe.id='designerFrame';
+        iframe.title='Store preview';
+        iframe.style.width='100%';
+        iframe.style.height='100%';
+        iframe.style.border='0';
+        iframe.src='#/s/'+st.slug+'?_r='+Date.now();
+        previewBody.appendChild(iframe);
+      },150);
+    }
+  }
+  if(D.tab==='code' && st){
+    setTimeout(()=>{
+      const frame=$('#codeFrame');
+      if(frame){
+        const src=frame.getAttribute('src').split('&_r=')[0].split('?_r=')[0];
+        frame.setAttribute('src','about:blank');
+        setTimeout(()=>frame.setAttribute('src',src+'?_r='+Date.now()),80);
+      }
+    },150);
+  }
 }
 function ordersPanel(st){
   if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
@@ -332,19 +360,29 @@ function designPanel(st){
           <i></i><i></i><i></i>
           <span>${esc(st.slug)}.easybuy.pk</span>
         </div>
-        <div class="designer-preview-body">
-          <iframe id="designerFrame" src="#/s/${esc(st.slug)}" title="Store preview"></iframe>
+        <div class="designer-preview-body" id="designerPreviewBody">
+          <div style="display:grid;place-items:center;height:100%;color:#89918e;font-size:14px">Loading preview…</div>
         </div>
       </div>
     </div>
   </div>`;
 }
 function refreshDesignerFrame(){
-  const f=$('#designerFrame');
-  if(!f)return;
-  const src=f.getAttribute('src');
-  f.setAttribute('src','about:blank');
-  setTimeout(()=>f.setAttribute('src',src+'?_r='+Date.now()),50);
+  const previewBody=$('#designerPreviewBody');
+  if(!previewBody)return;
+  const st=curS();if(!st)return;
+  previewBody.innerHTML='<div style="display:grid;place-items:center;height:100%;color:#89918e;font-size:14px">Refreshing preview…</div>';
+  setTimeout(()=>{
+    previewBody.innerHTML='';
+    const iframe=document.createElement('iframe');
+    iframe.id='designerFrame';
+    iframe.title='Store preview';
+    iframe.style.width='100%';
+    iframe.style.height='100%';
+    iframe.style.border='0';
+    iframe.src='#/s/'+st.slug+'?_r='+Date.now();
+    previewBody.appendChild(iframe);
+  },150);
 }
 async function updateStoreSections(sections,msg){
   const st=curS();if(!st)return;
@@ -352,7 +390,6 @@ async function updateStoreSections(sections,msg){
   if(r.error)throw r.error;
   MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
   renderDash();
-  setTimeout(()=>refreshDesignerFrame(),200);
   if(msg)toast(msg);
 }
 
@@ -402,9 +439,10 @@ function codePanel(st){
 function refreshCodeFrame(){
   const f=$('#codeFrame');
   if(!f)return;
-  const src=f.getAttribute('src').split('&_r=')[0].split('?_r=')[0];
+  const st=curS();if(!st)return;
+  const src='#/s/'+st.slug+'?_r='+Date.now();
   f.setAttribute('src','about:blank');
-  setTimeout(()=>f.setAttribute('src',src+'?_r='+Date.now()),50);
+  setTimeout(()=>f.setAttribute('src',src),80);
 }
 
 function settingsPanel(st){
@@ -452,7 +490,6 @@ function bindDesigner(){
         MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
         toast('Theme applied: '+theme);
         renderDash();
-        setTimeout(()=>refreshDesignerFrame(),200);
       });
       return;
     }
@@ -589,7 +626,6 @@ function bindCode(){
         if(r.error)throw r.error;
         MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
         renderDash();
-        setTimeout(()=>refreshCodeFrame(),200);
         toast('All custom code cleared');
       });
       return;
@@ -829,6 +865,12 @@ function renderProductsSection(st,products){
 async function renderStore(slug){
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
+
+  // Clean up custom code from previous store
+  const oldCSS=document.getElementById('storeCustomCSS');if(oldCSS)oldCSS.remove();
+  const oldHTML=document.getElementById('storeCustomHTML');if(oldHTML)oldHTML.remove();
+  const oldJS=document.getElementById('storeCustomJS');if(oldJS)oldJS.remove();
+
   let st=null,prods=[],revs=[];
   try{
     if(!sb)throw new Error('Supabase keys are missing in config.js');
@@ -884,18 +926,12 @@ async function renderStore(slug){
   syncCheckout();drawGrid();drawCart();
 
   /* ----- Inject custom code ----- */
-  // 1. Custom CSS
-  const oldCSS=document.getElementById('storeCustomCSS');
-  if(oldCSS)oldCSS.remove();
   if(st.custom_css){
     const styleEl=document.createElement('style');
     styleEl.id='storeCustomCSS';
     styleEl.textContent=st.custom_css;
     document.head.appendChild(styleEl);
   }
-  // 2. Custom HTML (before footer)
-  const oldHTML=document.getElementById('storeCustomHTML');
-  if(oldHTML)oldHTML.remove();
   if(st.custom_html){
     const block=document.createElement('div');
     block.id='storeCustomHTML';
@@ -904,9 +940,6 @@ async function renderStore(slug){
     if(footer)footer.parentNode.insertBefore(block,footer);
     else el.appendChild(block);
   }
-  // 3. Custom JS
-  const oldJS=document.getElementById('storeCustomJS');
-  if(oldJS)oldJS.remove();
   if(st.custom_js){
     try{
       const script=document.createElement('script');
