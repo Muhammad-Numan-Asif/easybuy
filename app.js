@@ -69,7 +69,7 @@ function readPending(){try{return JSON.parse(lsGet('eb.pending')||'null')}catch(
 async function afterAuth(){
   AUTH.note='';
   const pend=readPending();
-  if(pend){lsDel('eb.pending');try{const st=await createStore(pend);MY.active=st.id;toast('Store created. Add your first product.');D.tab='products'}catch(e){toast(e.message)}}
+  if(pend){lsDel('eb.pending');try{const st=await createStore(pend);MY.active=st.id;toast('Store created. Design it now!');D.tab='design'}catch(e){toast(e.message)}}
   location.hash='#/dashboard';
   if(location.hash==='#/dashboard')route();
 }
@@ -163,7 +163,7 @@ function initBuilder(){
     const draft={name,cat:B.cat,color:B.color,wa:$('#bWa').value.trim()};
     if(!sb){toast('Add your Supabase keys in config.js first');return}
     if(!USER){lsSet('eb.pending',JSON.stringify(draft));AUTH.mode='signup';location.hash='#/login';route();return}
-    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='design';toast('Store created. Now design it!');location.hash='#/dashboard';route()});
+    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='design';toast('Store created. Design it now!');location.hash='#/dashboard';route()});
   });
   $('#navCreate').addEventListener('click',e=>{
     if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
@@ -244,6 +244,20 @@ function renderDash(){
       ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
+  // Attach iframe load handler for designer frame
+  if(D.tab==='design'){
+    const fr=$('#designerFrame');
+    if(fr){
+      fr.addEventListener('load',()=>{
+        try{
+          const doc=fr.contentDocument;
+          if(doc&&doc.body){
+            // sync theme if needed - handled by URL/hash render
+          }
+        }catch(e){}
+      });
+    }
+  }
 }
 function ordersPanel(st){
   if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
@@ -275,9 +289,9 @@ function productsPanel(st){
   return form+list;
 }
 
-/* ---------- DESIGN PANEL (THEMES + SECTIONS) ---------- */
+/* ---------- DESIGN PANEL ---------- */
 function getSections(st){
-  if(Array.isArray(st.sections)&&st.sections.length)return st.sections;
+  if(Array.isArray(st.sections)&&st.sections.length)return JSON.parse(JSON.stringify(st.sections));
   return [
     {id:uid(),type:'hero',enabled:true},
     {id:uid(),type:'products',enabled:true},
@@ -295,7 +309,7 @@ function designPanel(st){
           <h3>Store theme</h3>
           <div class="theme-picker">
             ${THEMES.map(t=>`
-              <button class="theme-opt ${t} ${theme===t?'on':''}" data-set-theme="${t}">
+              <button type="button" class="theme-opt ${t} ${theme===t?'on':''}" data-set-theme="${t}">
                 ${t.charAt(0).toUpperCase()+t.slice(1)}
                 <div class="swatch-row"><i></i><i></i></div>
               </button>`).join('')}
@@ -304,7 +318,7 @@ function designPanel(st){
         <div class="designer-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <h3 style="margin:0">Sections</h3>
-            <button class="btn small primary" data-act="addsection">+ Add</button>
+            <button type="button" class="btn small primary" data-act="addsection">+ Add</button>
           </div>
           <div class="sections-list" id="sectionsList">
             ${sections.map((s,i)=>`
@@ -312,9 +326,9 @@ function designPanel(st){
                 <span class="drag">⋮⋮</span>
                 <span class="name">${SECTION_TYPES[s.type]?.icon||'📄'} ${SECTION_TYPES[s.type]?.name||s.type}</span>
                 <div class="acts">
-                  <button data-sup="${s.id}" title="Move up" ${i===0?'disabled':''}>↑</button>
-                  <button data-sdown="${s.id}" title="Move down" ${i===sections.length-1?'disabled':''}>↓</button>
-                  <button class="del" data-sdel="${s.id}" title="Remove">×</button>
+                  <button type="button" data-sup="${s.id}" title="Move up" ${i===0?'disabled':''}>↑</button>
+                  <button type="button" data-sdown="${s.id}" title="Move down" ${i===sections.length-1?'disabled':''}>↓</button>
+                  <button type="button" class="del" data-sdel="${s.id}" title="Remove">×</button>
                 </div>
                 <div class="toggle ${s.enabled?'on':''}" data-stoggle="${s.id}" title="Toggle visibility"></div>
               </div>`).join('')}
@@ -322,7 +336,7 @@ function designPanel(st){
         </div>
         <div class="designer-card">
           <h3>Quick actions</h3>
-          <button class="btn primary big" data-act="savetheme" style="margin-bottom:8px">💾 Save & publish</button>
+          <button type="button" class="btn primary big" data-act="savetheme" style="margin-bottom:8px">💾 Save &amp; publish</button>
           <a class="btn big" href="#/s/${esc(st.slug)}" target="_blank">👁️ Preview in new tab</a>
         </div>
       </div>
@@ -338,29 +352,22 @@ function designPanel(st){
     </div>
   </div>`;
 }
-
-/* Save theme */
-async function saveTheme(theme){
-  const st=curS();if(!st)return;
-  await busy(null,async()=>{
-    const r=await sb.from('stores').update({theme}).eq('id',st.id).select().single();
-    if(r.error)throw r.error;
-    MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
-    toast('Theme applied');
-    refreshDesignerFrame();
-    renderDash();
-  });
+function refreshDesignerFrame(){
+  const f=$('#designerFrame');
+  if(!f)return;
+  // Reassign src to force reload with latest store data
+  const src=f.getAttribute('src');
+  f.setAttribute('src','about:blank');
+  setTimeout(()=>f.setAttribute('src',src),50);
 }
-async function saveSections(sections){
+async function updateStoreSections(sections,msg){
   const st=curS();if(!st)return;
   const r=await sb.from('stores').update({sections}).eq('id',st.id).select().single();
   if(r.error)throw r.error;
   MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
-  refreshDesignerFrame();
-}
-function refreshDesignerFrame(){
-  const f=$('#designerFrame');
-  if(f){const src=f.src;f.src=src;}
+  renderDash();
+  setTimeout(()=>refreshDesignerFrame(),200);
+  if(msg)toast(msg);
 }
 
 function settingsPanel(st){
@@ -387,64 +394,107 @@ async function uploadImage(blob){
   return sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
 }
 
-/* ---------- Design interactions ---------- */
+/* ============================================================
+   DESIGNER EVENTS — attached to document, capture phase
+   ============================================================ */
+let designerBound=false;
 function bindDesigner(){
-  const el=$('#dash');
-  el.addEventListener('click',async e=>{
-    // Theme
+  if(designerBound)return;
+  designerBound=true;
+  document.addEventListener('click',async e=>{
+    // Only handle when we're inside dashboard
+    if(!$('#v-dashboard')||$('#v-dashboard').hidden)return;
+
+    // Theme picker
     const th=e.target.closest('[data-set-theme]');
-    if(th){await saveTheme(th.dataset.setTheme);return}
+    if(th){
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      const theme=th.dataset.setTheme;
+      await busy(th,async()=>{
+        const r=await sb.from('stores').update({theme}).eq('id',st.id).select().single();
+        if(r.error)throw r.error;
+        MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+        toast('Theme applied: '+theme);
+        renderDash();
+        setTimeout(()=>refreshDesignerFrame(),200);
+      });
+      return;
+    }
     // Add section
-    if(e.target.closest('[data-act="addsection"]')){openAddSectionModal();return}
-    // Section toggle
+    if(e.target.closest('[data-act="addsection"]')){
+      e.preventDefault();
+      openAddSectionModal();
+      return;
+    }
+    // Toggle
     const tg=e.target.closest('[data-stoggle]');
     if(tg){
-      const st=curS();const sections=getSections(st);
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      const sections=getSections(st);
       const s=sections.find(x=>x.id===tg.dataset.stoggle);
-      if(s){s.enabled=!s.enabled;await saveSections(sections);renderDash()}
+      if(!s)return;
+      s.enabled=!s.enabled;
+      await busy(null,()=>updateStoreSections(sections,s.enabled?'Section shown':'Section hidden'));
       return;
     }
-    // Section up
+    // Move up
     const up=e.target.closest('[data-sup]');
     if(up){
-      const st=curS();const sections=getSections(st);
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      const sections=getSections(st);
       const i=sections.findIndex(x=>x.id===up.dataset.sup);
-      if(i>0){[sections[i-1],sections[i]]=[sections[i],sections[i-1]];await saveSections(sections);renderDash()}
+      if(i<=0)return;
+      [sections[i-1],sections[i]]=[sections[i],sections[i-1]];
+      await busy(null,()=>updateStoreSections(sections,'Section moved up'));
       return;
     }
-    // Section down
+    // Move down
     const dn=e.target.closest('[data-sdown]');
     if(dn){
-      const st=curS();const sections=getSections(st);
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      const sections=getSections(st);
       const i=sections.findIndex(x=>x.id===dn.dataset.sdown);
-      if(i>=0&&i<sections.length-1){[sections[i],sections[i+1]]=[sections[i+1],sections[i]];await saveSections(sections);renderDash()}
+      if(i<0||i>=sections.length-1)return;
+      [sections[i],sections[i+1]]=[sections[i+1],sections[i]];
+      await busy(null,()=>updateStoreSections(sections,'Section moved down'));
       return;
     }
-    // Section delete
+    // Delete
     const dl=e.target.closest('[data-sdel]');
     if(dl){
-      const st=curS();let sections=getSections(st);
-      sections=sections.filter(x=>x.id!==dl.dataset.sdel);
-      await saveSections(sections);renderDash();
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      if(!confirm('Remove this section?'))return;
+      const sections=getSections(st).filter(x=>x.id!==dl.dataset.sdel);
+      await busy(null,()=>updateStoreSections(sections,'Section removed'));
       return;
     }
-    // Save theme button
+    // Save theme quick action
     if(e.target.closest('[data-act="savetheme"]')){
-      toast('Store saved & published');refreshDesignerFrame();return;
+      e.preventDefault();
+      toast('Store saved & published');
+      refreshDesignerFrame();
+      return;
     }
-  });
+  },true);
 }
 
 function openAddSectionModal(){
-  const st=curS();
+  const st=curS();if(!st)return;
   const existing=getSections(st).map(s=>s.type);
-  const available=Object.entries(SECTION_TYPES).filter(([k,v])=>!existing.includes(k));
+  const available=Object.entries(SECTION_TYPES).filter(([k])=>!existing.includes(k));
+  const old=document.getElementById('addSectionModal');
+  if(old)old.remove();
   const html=`
-    <div class="modal open" id="addSectionModal" style="z-index:150">
+    <div class="modal open" id="addSectionModal" style="z-index:200">
       <div class="box" style="max-width:520px">
-        <div class="sheet-head"><h2>Add a section</h2><button class="btn small" data-close-add>Close</button></div>
+        <div class="sheet-head"><h2>Add a section</h2><button type="button" class="btn small" data-close-add>Close</button></div>
         ${available.length?`<div class="add-section-grid">
-          ${available.map(([k,v])=>`<button class="section-add-opt" data-add-type="${k}">
+          ${available.map(([k,v])=>`<button type="button" class="section-add-opt" data-add-type="${k}">
             <div class="ico">${v.icon}</div>
             <b>${v.name}</b>
             <small>${v.desc}</small>
@@ -453,18 +503,19 @@ function openAddSectionModal(){
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend',html);
-  $('#addSectionModal').addEventListener('click',async e=>{
-    if(e.target.id==='addSectionModal'||e.target.closest('[data-close-add]')){
-      $('#addSectionModal').remove();return;
+  const modal=document.getElementById('addSectionModal');
+  modal.addEventListener('click',async ev=>{
+    if(ev.target.id==='addSectionModal'||ev.target.closest('[data-close-add]')){
+      modal.remove();return;
     }
-    const opt=e.target.closest('[data-add-type]');
+    const opt=ev.target.closest('[data-add-type]');
     if(opt){
-      const st=curS();const sections=getSections(st);
-      sections.push({id:uid(),type:opt.dataset.addType,enabled:true});
-      await saveSections(sections);
-      $('#addSectionModal').remove();
-      renderDash();
-      toast(SECTION_TYPES[opt.dataset.addType].name+' added');
+      const type=opt.dataset.addType;
+      const st2=curS();
+      const sections=getSections(st2);
+      sections.push({id:uid(),type,enabled:true});
+      modal.remove();
+      await busy(null,()=>updateStoreSections(sections,SECTION_TYPES[type].name+' added'));
     }
   });
 }
@@ -473,6 +524,19 @@ function openAddSectionModal(){
 function bindDash(){
   const el=$('#v-dashboard');
   el.addEventListener('click',async e=>{
+    // Let designer handle its own
+    if(e.target.closest('[data-set-theme]')||
+       e.target.closest('[data-stoggle]')||
+       e.target.closest('[data-sup]')||
+       e.target.closest('[data-sdown]')||
+       e.target.closest('[data-sdel]')||
+       e.target.closest('[data-act="addsection"]')||
+       e.target.closest('[data-act="savetheme"]')||
+       e.target.closest('[data-close-add]')||
+       e.target.closest('[data-add-type]')||
+       e.target.id==='addSectionModal'){
+      return;
+    }
     const st=curS();
     const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
     if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50);return}
@@ -590,10 +654,8 @@ function addToCart(pid,variant){
   setCart(c);drawCart();return true;
 }
 
-/* ============================================================
-   STORE SECTIONS RENDERER
-   ============================================================ */
-function renderSection(sec,st,products){
+/* ---------- store section renderers ---------- */
+function renderSection(sec,st){
   if(!sec.enabled)return '';
   const t=sec.type;
   if(t==='hero'){
@@ -699,12 +761,10 @@ async function renderStore(slug){
   el.className='theme-'+(st.theme||'classic');
 
   const sections=getSections(st);
-
-  // Build sections HTML
   let bodyHtml='';
   sections.forEach(sec=>{
     if(sec.type==='products'){bodyHtml+=renderProductsSection(st,prods)}
-    else bodyHtml+=renderSection(sec,st,prods);
+    else bodyHtml+=renderSection(sec,st);
   });
 
   el.innerHTML=`
@@ -763,7 +823,7 @@ function openProduct(p){
   const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
   const note=isSold(p)?'<p class="stock-note out" style="color:var(--danger)">Sold out</p>':lowStock(p)?`<p class="stock-note low" style="color:var(--warning)">Only ${p.stock} left</p>`:'';
   $('#pmBody').innerHTML=`
-  <div class="product-modal-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div class="product-modal-pic" style="background:#f3f5f4;border-radius:18px;display:grid;place-items:center;min-height:280px;font-size:60px">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:(CATS[st.category]||'🛍️')}</div>
+  <div class="product-modal-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div class="product-modal-pic" style="background:#f3f5f4;border-radius:18px;display:grid;place-items:center;min-height:280px;font-size:60px;overflow:hidden">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:(CATS[st.category]||'🛍️')}</div>
   <div>${p.old_price>p.price?'<span class="pill st-New">SALE</span>':''}
     <h2 style="margin-top:10px">${esc(p.name)}</h2>
     ${rt?`<div class="rating" style="color:#f5a623;font-size:13px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
