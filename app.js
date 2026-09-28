@@ -35,7 +35,8 @@ let USER=null;
 
 /* ---------- router ---------- */
 function route(){
-  const parts=(location.hash||'#/').split('/');
+ const cleanHash=(location.hash||'#/').split('?')[0];
+const parts=cleanHash.split('/');
   let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':parts[1]==='track'?'track':'home';
   if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
   $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
