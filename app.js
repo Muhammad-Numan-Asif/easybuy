@@ -6,5429 +6,736 @@ const uid=()=>Math.random().toString(36).slice(2,8);
 const CATS={Pets:'🐾',Fashion:'👗',Electronics:'🎧',Home:'🏠',Beauty:'💄',Other:'🛍️'};
 const COLORS=['#0a7d55','#1f6f9f','#d8452e','#7a4dd8','#c98a00','#c2185b','#26332e'];
 const STATUSES=['New','Confirmed','Shipped','Delivered','Cancelled'];
-
-const slugify=s=>{
-  let b=(s||'').toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/^-+|-+$/g,'')
-    .slice(0,24)
-    .replace(/-+$/,'');
-  if(b.length<3)b=(b+'-shop').replace(/^-/,'');
-  return b;
-};
-
-const slugPreview=s=>
-  (s||'').toLowerCase()
-  .replace(/[^a-z0-9]+/g,'')
-  .slice(0,24)||'yourstore';
-
-function ink(hex){
-  const n=parseInt(hex.slice(1),16);
-  const r=n>>16;
-  const g=(n>>8)&255;
-  const b=n&255;
-  return (0.299*r+0.587*g+0.114*b)>165
-    ?'#10231d'
-    :'#ffffff';
-}
-
-function waNum(p){
-  let d=String(p||'').replace(/\D/g,'');
-  if(d.startsWith('0'))d='92'+d.slice(1);
-  return d;
-}
-
-let toastT;
-
-function toast(m){
-  const t=$('#toast');
-  if(!t)return;
-  t.textContent=m;
-  t.classList.add('show');
-  clearTimeout(toastT);
-  toastT=setTimeout(()=>t.classList.remove('show'),3200);
-}
-
-const ok=r=>{
-  if(r.error)throw r.error;
-  return r.data;
-};
-
-async function busy(btn,fn){
-  if(btn)btn.disabled=true;
-  try{
-    return await fn();
-  }catch(e){
-    console.error(e);
-    toast(e.message||'Something went wrong');
-  }finally{
-    if(btn)btn.disabled=false;
-  }
-}
-
-const lsGet=k=>{
-  try{
-    return localStorage.getItem(k);
-  }catch(e){
-    return null;
-  }
-};
-
-const lsSet=(k,v)=>{
-  try{
-    localStorage.setItem(k,v);
-  }catch(e){}
-};
-
-const lsDel=k=>{
-  try{
-    localStorage.removeItem(k);
-  }catch(e){}
-};
-
+const slugify=s=>{let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24).replace(/-+$/,'');if(b.length<3)b=(b+'-shop').replace(/^-/,'');return b};
+const slugPreview=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,24)||'yourstore';
+function ink(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#10231d':'#ffffff'}
+function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('0'))d='92'+d.slice(1);return d}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200)}
+const ok=r=>{if(r.error)throw r.error;return r.data};
+async function busy(btn,fn){if(btn)btn.disabled=true;try{return await fn()}catch(e){console.error(e);toast(e.message||'Something went wrong')}finally{if(btn)btn.disabled=false}}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 
 /* ---------- supabase ---------- */
 const CFG=window.EASYBUY_CONFIG||{};
-
-const configured=!!(
-  CFG.SUPABASE_URL &&
-  CFG.SUPABASE_ANON_KEY &&
-  !/^PASTE/.test(CFG.SUPABASE_URL) &&
-  window.supabase
-);
-
-const sb=configured
-  ?window.supabase.createClient(
-      CFG.SUPABASE_URL,
-      CFG.SUPABASE_ANON_KEY
-    )
-  :null;
-
+const configured=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/^PASTE/.test(CFG.SUPABASE_URL)&&window.supabase);
+const sb=configured?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 let USER=null;
 
-
 /* ---------- router ---------- */
-
-function navigate(hash){
-  const next=hash||'#/';
-
-  if(location.hash===next){
-    route();
-    return;
-  }
-
-  location.hash=next;
-}
-
 function route(){
-
-  const hash=(location.hash||'#/').replace(/^#?/,'#');
-
-  const parts=hash.split('/');
-
-  const section=parts[1]||'';
-
-  let v=
-    section==='dashboard'
-      ?'dashboard'
-      :section==='s'
-      ?'store'
-      :section==='login'
-      ?'login'
-      :section==='track'
-      ?'track'
-      :'home';
-
-  if(v==='dashboard'&&!USER){
-
-    AUTH.note='Log in to open your seller dashboard.';
-
-    if(hash!=='#/login'){
-      navigate('#/login');
-      return;
-    }
-
-    v='login';
-    AUTH.mode='login';
-  }
-
-  $$('[data-view]').forEach(el=>{
-    el.hidden=el.id!==`v-${v}`;
-  });
-
-  const header=$('#siteHeader');
-  const footer=$('#siteFooter');
-
-  if(header)header.hidden=v==='store';
-  if(footer)footer.hidden=v==='store';
-
-  $$('.nav-links a[data-nav]').forEach(a=>{
-    a.classList.toggle('on',a.dataset.nav===v);
-  });
-
-  if(v==='home'){
-    renderHome();
-  }else if(v==='login'){
-    renderLogin();
-  }else if(v==='dashboard'&&USER){
-    loadDash();
-  }else if(v==='store'){
-    renderStore(parts[2]);
-  }else if(v==='track'){
-    renderTrack();
-  }
-
-  window.scrollTo({
-    top:0,
-    left:0,
-    behavior:'auto'
-  });
+  const parts=(location.hash||'#/').split('/');
+  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':'home';
+  if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
+  $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
+  $('#siteHeader').hidden=v==='store';
+  $('#siteFooter').hidden=v==='store';
+  $$('.nav-links a[data-nav]').forEach(a=>a.classList.toggle('on',a.dataset.nav===v));
+  if(v==='home')renderHome();
+  if(v==='login')renderLogin();
+  if(v==='dashboard')loadDash();
+  if(v==='store')renderStore(parts[2]);
+  window.scrollTo(0,0);
 }
-
-window.addEventListener('hashchange',route);
-
-function paintNav(){
-
-  const b=$('#navAuth');
-
-  if(b){
-    b.textContent=USER?'Log out':'Log in';
-
-    b.setAttribute(
-      'aria-label',
-      USER
-        ?'Log out of EasyBuy'
-        :'Log in to EasyBuy'
-    );
-  }
-
-  $$('.nav-links a[data-nav]').forEach(a=>{
-    a.setAttribute(
-      'aria-current',
-      a.classList.contains('on')
-        ?'page'
-        :'false'
-    );
-  });
-}
-
+window.addEventListener('hashchange',()=>route());
+function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
 
 /* ---------- auth ---------- */
-
-const AUTH={
-  mode:'signup',
-  note:''
-};
-
+const AUTH={mode:'signup',note:''};
 function renderLogin(){
-
-  const su=AUTH.mode==='signup';
-  const pend=readPending();
-
-  $('#v-login').innerHTML=`
-    <div class="wrap auth">
-      <form class="builder" id="authForm">
-
-        <h2>
-          ${su?'Create your seller account':'Log in'}
-        </h2>
-
-        <p class="fine" style="margin:0 0 16px">
-          ${esc(
-            pend
-              ?'Aap ka store "'+pend.name+'" account banate hi ban jayega.'
-              :AUTH.note||'Email aur password se account banta hai.'
-          )}
-        </p>
-
-        <label>
-          Email
-          <input
-            id="aEmail"
-            type="email"
-            autocomplete="email"
-            required
-          >
-        </label>
-
-        <label>
-          Password (6+ characters)
-          <input
-            id="aPass"
-            type="password"
-            minlength="6"
-            autocomplete="${su?'new-password':'current-password'}"
-            required
-          >
-        </label>
-
-        <button
-          class="btn primary big"
-          type="submit"
-        >
-          ${su?'Create account':'Log in'}
-        </button>
-
-        <p class="fine">
-          <button
-            class="linkbtn"
-            type="button"
-            data-auth="toggle"
-          >
-            ${
-              su
-                ?'Already have an account? Log in'
-                :'New here? Create an account'
-            }
-          </button>
-        </p>
-
-        <p
-          class="fine"
-          id="aMsg"
-          role="alert"
-        ></p>
-
-      </form>
-    </div>
-  `;
+  const su=AUTH.mode==='signup',pend=readPending();
+  $('#v-login').innerHTML=`<div class="wrap auth"><form class="builder" id="authForm">
+    <h2>${su?'Create your seller account':'Log in'}</h2>
+    <p class="fine" style="margin:0 0 16px">${esc(pend?'Your store "'+pend.name+'" will be created as soon as your account is ready.':AUTH.note||'Sign up with your email address and a password.')}</p>
+    <label>Email<input id="aEmail" type="email" autocomplete="email" required></label>
+    <label>Password (6+ characters)<input id="aPass" type="password" minlength="6" autocomplete="${su?'new-password':'current-password'}" required></label>
+    <button class="btn primary big" type="submit">${su?'Create account':'Log in'}</button>
+    <p class="fine"><button class="linkbtn" type="button" data-auth="toggle">${su?'Already have an account? Log in':'New here? Create an account'}</button></p>
+    <p class="fine" id="aMsg" role="alert"></p></form></div>`;
 }
-
-function readPending(){
-  try{
-    return JSON.parse(
-      lsGet('eb.pending')||'null'
-    );
-  }catch(e){
-    return null;
-  }
-}
-
+function readPending(){try{return JSON.parse(lsGet('eb.pending')||'null')}catch(e){return null}}
 async function afterAuth(){
-
   AUTH.note='';
-
   const pend=readPending();
-
-  if(pend){
-
-    lsDel('eb.pending');
-
-    try{
-
-      const st=await createStore(pend);
-
-      MY.active=st.id;
-
-      toast(
-        'Store ban gaya. Ab pehla product add karo.'
-      );
-
-      D.tab='products';
-
-    }catch(e){
-
-      toast(e.message);
-    }
-  }
-
-  navigate('#/dashboard');
+  if(pend){lsDel('eb.pending');try{const st=await createStore(pend);MY.active=st.id;toast('Store created. Add your first product.');D.tab='products'}catch(e){toast(e.message)}}
+  location.hash='#/dashboard';
+  if(location.hash==='#/dashboard')route();
 }
-
 async function createStore(d){
-
   let base=slugify(d.name);
-
   for(let i=0;i<5;i++){
-
-    const slug=
-      i===0
-        ?base
-        :(base.slice(0,24)+'-'+uid().slice(0,3));
-
-    const r=await sb
-      .from('stores')
-      .insert({
-        slug,
-        name:d.name,
-        category:d.cat,
-        color:d.color,
-        whatsapp:d.wa||'',
-        tagline:
-          'Welcome to '+d.name+
-          '. Order online and pay in cash when it arrives.'
-      })
-      .select()
-      .single();
-
+    const slug=i===0?base:(base.slice(0,24)+'-'+uid().slice(0,3));
+    const r=await sb.from('stores').insert({slug,name:d.name,category:d.cat,color:d.color,whatsapp:d.wa||'',tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.'}).select().single();
     if(!r.error)return r.data;
-
-    if(r.error.code!=='23505'){
-      throw r.error;
-    }
+    if(r.error.code!=='23505')throw r.error;
   }
-
-  throw new Error(
-    'Could not find a free store link. Try a different name.'
-  );
+  throw new Error('Could not find a free store link. Try a different name.');
 }
-
-
 document.addEventListener('submit',async e=>{
-
-  if(e.target.id!=='authForm')return;
-
-  e.preventDefault();
-
-  if(!sb){
-    toast(
-      'Add your Supabase keys in config.js first'
-    );
-    return;
-  }
-
-  const email=$('#aEmail').value.trim();
-  const password=$('#aPass').value;
-  const msg=$('#aMsg');
-
+  if(e.target.id!=='authForm')return;e.preventDefault();
+  if(!sb){toast('Add your Supabase keys in config.js first');return}
+  const email=$('#aEmail').value.trim(),password=$('#aPass').value,msg=$('#aMsg');
   msg.textContent='';
-
-  await busy(
-    e.target.querySelector(
-      'button[type=submit]'
-    ),
-    async()=>{
-
-      if(AUTH.mode==='signup'){
-
-        const r=await sb.auth.signUp({
-          email,
-          password
-        });
-
-        if(r.error){
-          msg.textContent=r.error.message;
-          return;
-        }
-
-        if(r.data.session){
-
-          USER=r.data.session.user;
-
-          paintNav();
-
-          await afterAuth();
-
-        }else{
-
-          msg.textContent=
-            'Account ban gaya. Email mein confirmation link aaya hoga, usay kholo aur phir Log in karo.';
-        }
-
-      }else{
-
-        const r=
-          await sb.auth.signInWithPassword({
-            email,
-            password
-          });
-
-        if(r.error){
-          msg.textContent=r.error.message;
-          return;
-        }
-
-        USER=r.data.user;
-
-        paintNav();
-
-        await afterAuth();
-      }
-    }
-  );
-});
-
-
-document.addEventListener('click',async e=>{
-
-  const t=e.target.closest('[data-auth]');
-
-  if(
-    t &&
-    t.dataset.auth==='toggle'
-  ){
-    AUTH.mode=
-      AUTH.mode==='signup'
-        ?'login'
-        :'signup';
-
-    renderLogin();
-  }
-
-  const authBtn=e.target.closest('#navAuth');
-
-  if(authBtn){
-
-    if(USER){
-
-      await sb.auth.signOut();
-
-      USER=null;
-
-      paintNav();
-
-      toast('Logged out');
-
-      navigate('#/');
-
+  await busy(e.target.querySelector('button[type=submit]'),async()=>{
+    if(AUTH.mode==='signup'){
+      const r=await sb.auth.signUp({email,password});
+      if(r.error){msg.textContent=r.error.message;return}
+      if(r.data.session){USER=r.data.session.user;paintNav();await afterAuth()}
+      else msg.textContent='Account created. Open the confirmation link we sent to your email, then log in.';
     }else{
-
-      AUTH.mode='login';
-
-      navigate('#/login');
+      const r=await sb.auth.signInWithPassword({email,password});
+      if(r.error){msg.textContent=r.error.message;return}
+      USER=r.data.user;paintNav();await afterAuth();
     }
+  });
+});
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-auth]');
+  if(t&&t.dataset.auth==='toggle'){AUTH.mode=AUTH.mode==='signup'?'login':'signup';renderLogin()}
+  if(e.target.id==='navAuth'){
+    if(USER){await sb.auth.signOut();USER=null;paintNav();toast('Logged out');location.hash='#/';route()}
+    else{AUTH.mode='login';location.hash='#/login';route()}
   }
 });
-
 
 /* ---------- home ---------- */
-
-const B={
-  cat:'Pets',
-  color:COLORS[0]
-};
-
+const B={cat:'Pets',color:COLORS[0]};
 function initBuilder(){
-
-  $('#bCats').innerHTML=
-    Object.keys(CATS)
-      .map(c=>`
-        <button
-          type="button"
-          class="chip"
-          data-cat="${c}"
-          aria-pressed="${c===B.cat}"
-        >
-          ${CATS[c]} ${c}
-        </button>
-      `)
-      .join('');
-
-  $('#bColors').innerHTML=
-    COLORS
-      .map(c=>`
-        <button
-          type="button"
-          class="sw"
-          data-color="${c}"
-          style="background:${c}"
-          aria-label="Colour ${c}"
-          aria-pressed="${c===B.color}"
-        ></button>
-      `)
-      .join('');
-
-  $('#bCats').addEventListener(
-    'click',
-    e=>{
-      const b=e.target.closest('[data-cat]');
-
-      if(!b)return;
-
-      B.cat=b.dataset.cat;
-
-      $$('#bCats .chip').forEach(x=>{
-        x.setAttribute(
-          'aria-pressed',
-          x===b
-        );
-      });
-
-      preview();
-    }
-  );
-
-  $('#bColors').addEventListener(
-    'click',
-    e=>{
-      const b=e.target.closest('[data-color]');
-
-      if(!b)return;
-
-      B.color=b.dataset.color;
-
-      $$('#bColors .sw').forEach(x=>{
-        x.setAttribute(
-          'aria-pressed',
-          x===b
-        );
-      });
-
-      preview();
-    }
-  );
-
-  $('#bName').addEventListener(
-    'input',
-    preview
-  );
-
-  $('#builder').addEventListener(
-    'submit',
-    async e=>{
-
-      e.preventDefault();
-
-      const name=$('#bName').value.trim();
-
-      if(!name){
-
-        toast(
-          'Pehle store ka naam likho'
-        );
-
-        $('#bName').focus();
-
-        return;
-      }
-
-      const draft={
-        name,
-        cat:B.cat,
-        color:B.color,
-        wa:$('#bWa').value.trim()
-      };
-
-      if(!sb){
-
-        toast(
-          'Add your Supabase keys in config.js first'
-        );
-
-        return;
-      }
-
-      if(!USER){
-
-        lsSet(
-          'eb.pending',
-          JSON.stringify(draft)
-        );
-
-        AUTH.mode='signup';
-
-        navigate('#/login');
-
-        return;
-      }
-
-      await busy(
-        e.submitter,
-        async()=>{
-
-          const st=
-            await createStore(draft);
-
-          MY.active=st.id;
-
-          D.tab='products';
-
-          toast(
-            'Store ban gaya. Ab pehla product add karo.'
-          );
-
-          navigate('#/dashboard');
-        }
-      );
-    }
-  );
-
-  $('#navCreate').addEventListener(
-    'click',
-    e=>{
-
-      if(
-        (location.hash||'#/')==='#/' ||
-        location.hash===''
-      ){
-
-        e.preventDefault();
-
-        $('#builderTop').scrollIntoView({
-          behavior:'smooth',
-          block:'start'
-        });
-
-        $('#bName').focus({
-          preventScroll:true
-        });
-      }
-    }
-  );
-
+  $('#bCats').innerHTML=Object.keys(CATS).map(c=>`<button type="button" class="chip" data-cat="${c}" aria-pressed="${c===B.cat}">${CATS[c]} ${c}</button>`).join('');
+  $('#bColors').innerHTML=COLORS.map(c=>`<button type="button" class="sw" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===B.color}"></button>`).join('');
+  $('#bCats').addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(!b)return;B.cat=b.dataset.cat;$$('#bCats .chip').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  $('#bColors').addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b)return;B.color=b.dataset.color;$$('#bColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  $('#bName').addEventListener('input',preview);
+  $('#builder').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const name=$('#bName').value.trim();
+    if(!name){toast('Enter a store name first');$('#bName').focus();return}
+    const draft={name,cat:B.cat,color:B.color,wa:$('#bWa').value.trim()};
+    if(!sb){toast('Add your Supabase keys in config.js first');return}
+    if(!USER){lsSet('eb.pending',JSON.stringify(draft));AUTH.mode='signup';location.hash='#/login';route();return}
+    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='products';toast('Store created. Add your first product.');location.hash='#/dashboard';route()});
+  });
+  $('#navCreate').addEventListener('click',e=>{
+    if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
+  });
   preview();
 }
-
 function preview(){
-
-  const name=
-    $('#bName').value.trim()||
-    'Your store';
-
-  const f=$('#frame');
-
-  f.style.setProperty(
-    '--accent',
-    B.color
-  );
-
-  f.style.setProperty(
-    '--on-accent',
-    ink(B.color)
-  );
-
-  $('#pvName').textContent=name;
-
-  $('#pvBand').textContent=name;
-
-  $('#pvUrl').textContent=
-    slugPreview(
-      $('#bName').value
-    )+'.easybuy.pk';
-
-  const e=CATS[B.cat];
-
-  const prices=[
-    '1,499',
-    '2,999',
-    '799'
-  ];
-
-  $('#pvGrid').innerHTML=
-    prices
-      .map(p=>`
-        <div class="pv-tile">
-
-          <div class="pv-pic">
-            ${e}
-          </div>
-
-          <div class="pv-txt">
-            <s></s>
-            <s></s>
-            <strong>
-              Rs. ${p}
-            </strong>
-          </div>
-
-        </div>
-      `)
-      .join('');
+  const name=$('#bName').value.trim()||'Your store';
+  const f=$('#frame');f.style.setProperty('--accent',B.color);f.style.setProperty('--on-accent',ink(B.color));
+  $('#pvName').textContent=name;$('#pvBand').textContent=name;
+  $('#pvUrl').textContent=slugPreview($('#bName').value)+'.easybuy.pk';
+  const e=CATS[B.cat],prices=['1,499','2,999','799'];
+  $('#pvGrid').innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
 }
-
 async function renderHome(){
-
   const box=$('#storeList');
-
-  if(!sb){
-
-    box.innerHTML=
-      '<p class="sub">Supabase keys add karne ke baad yahan live stores dikhenge.</p>';
-
-    return;
-  }
-
+  if(!sb){box.innerHTML='<p class="sub">Stores will appear here once the platform is connected.</p>';return}
   try{
-
-    const list=ok(
-      await sb
-        .from('stores')
-        .select(
-          'slug,name,category,color'
-        )
-        .order(
-          'created_at',
-          {ascending:false}
-        )
-        .limit(12)
-    );
-
-    box.innerHTML=
-      list.length
-        ?list.map(s=>`
-          <div class="store-row">
-
-            <div
-              class="store-dot"
-              style="background:${esc(s.color)};color:${ink(s.color)}"
-            >
-              ${CATS[s.category]||'🛍️'}
-            </div>
-
-            <div>
-              <b>${esc(s.name)}</b>
-              <small>${esc(s.category)}</small>
-            </div>
-
-            <a
-              class="btn small"
-              href="#/s/${esc(s.slug)}"
-            >
-              Visit store
-            </a>
-
-          </div>
-        `).join('')
-        :'<p class="sub">Abhi koi store nahi bana. Pehla store aap ka ho sakta hai.</p>';
-
-  }catch(e){
-
-    box.innerHTML=
-      '<p class="sub">Stores load nahi ho sake: '+
-      esc(e.message)+
-      '</p>';
-  }
+    const list=ok(await sb.from('stores').select('slug,name,category,color').order('created_at',{ascending:false}).limit(12));
+    box.innerHTML=list.length?list.map(s=>`
+      <div class="store-row"><div class="store-dot" style="background:${esc(s.color)};color:${ink(s.color)}">${CATS[s.category]||'🛍️'}</div>
+      <div><b>${esc(s.name)}</b><small>${esc(s.category)}</small></div>
+      <a class="btn small" href="#/s/${esc(s.slug)}">Visit store</a></div>`).join('')
+      :'<p class="sub">No stores have been created yet. Yours can be the first.</p>';
+  }catch(e){box.innerHTML='<p class="sub">Stores could not be loaded: '+esc(e.message)+'</p>'}
 }
-
 
 /* ---------- dashboard ---------- */
-
-const MY={
-  stores:[],
-  active:null,
-  products:[],
-  orders:[]
-};
-
-const D={
-  tab:'overview',
-  loading:false
-};
-
-function curS(){
-  return MY.stores.find(
-    s=>s.id===MY.active
-  )||MY.stores[0]||null;
-}
-/* ---------- dashboard data ---------- */
-
+const MY={stores:[],active:null,products:[],orders:[]};
+const D={tab:'orders',form:null,file:null};
+const curS=()=>MY.stores.find(s=>s.id===MY.active);
 async function loadDash(){
-
-  if(!sb || !USER){
-    renderLogin();
-    return;
-  }
-
-  D.loading=true;
-
+  $('#dash').innerHTML='<div class="empty">Loading your store...</div>';
   try{
-
-    MY.stores=ok(
-      await sb
-        .from('stores')
-        .select('*')
-        .eq('owner_id',USER.id)
-        .order('created_at',{ascending:false})
-    );
-
-    if(!MY.stores.length){
-
-      MY.active=null;
-      renderDash();
-
-      D.loading=false;
-      return;
-    }
-
-    if(
-      !MY.active ||
-      !MY.stores.some(s=>s.id===MY.active)
-    ){
-      MY.active=MY.stores[0].id;
-    }
-
+    MY.stores=ok(await sb.from('stores').select('*').eq('owner_id',USER.id).order('created_at'));
+    if(!curS())MY.active=MY.stores[0]?MY.stores[0].id:null;
     await loadStoreData();
-
-    renderDash();
-
-  }catch(e){
-
-    console.error(e);
-
-    toast(
-      e.message||'Dashboard load failed'
-    );
-
-  }finally{
-
-    D.loading=false;
-  }
+  }catch(e){toast(e.message)}
+  renderDash();
 }
-
-
 async function loadStoreData(){
-
-  const st=curS();
-
-  if(!st)return;
-
-  MY.products=ok(
-    await sb
-      .from('products')
-      .select('*')
-      .eq('store_id',st.id)
-      .order('created_at',{ascending:false})
-  );
-
-  MY.orders=ok(
-    await sb
-      .from('orders')
-      .select('*')
-      .eq('store_id',st.id)
-      .order('created_at',{ascending:false})
-  );
+  MY.products=[];MY.orders=[];
+  if(!MY.active)return;
+  const [p,o]=await Promise.all([
+    sb.from('products').select('*').eq('store_id',MY.active).order('created_at'),
+    sb.from('orders').select('*').eq('store_id',MY.active).order('created_at',{ascending:false})]);
+  MY.products=ok(p);MY.orders=ok(o);
 }
-
-
 function renderDash(){
-
+  const el=$('#dash'),st=curS();
+  if(!st){el.innerHTML='<div class="empty"><h2>No stores yet</h2><p>Create your first store and it will show up here.</p><a class="btn primary" href="#/" id="goCreate">Create a store</a></div>';return}
+  const live=MY.orders.filter(o=>o.status!=='Cancelled');
+  const rev=live.reduce((a,o)=>a+o.total,0),fresh=MY.orders.filter(o=>o.status==='New').length;
+  const active=MY.products.filter(p=>p.is_active).length;
+  el.innerHTML=`<div class="dash-shell">
+    <aside class="dash-side">
+      <div class="side-store"><small style="color:var(--muted)">Your store</small><b>${esc(st.name)}</b><small>${esc(st.category)}</small></div>
+      <div class="side-nav">
+        <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
+        <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
+        <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
+      </div>
+      <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
+    </aside>
+    <div class="dash-main">
+      <div class="mobile-dash-nav">${['orders','products','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      <div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):settingsPanel(st)}
+    </div>
+  </div>`;
+}
+function ordersPanel(st){
+  if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
+  return `<div class="panel-box">${MY.orders.map(o=>`
+    <article class="order">
+      <div class="order-top"><strong>Order #${o.order_no}</strong><span class="pill st-${o.status}">${o.status}</span><time>${new Date(o.created_at).toLocaleString('en-PK',{dateStyle:'medium',timeStyle:'short'})}</time></div>
+      <p><b style="color:var(--ink)">${esc(o.customer_name)}</b>, ${esc(o.customer_phone)}</p>
+      <p>${esc(o.address)}, ${esc(o.city)}${o.state?', '+esc(o.state):''}${o.postal_code?' '+esc(o.postal_code):''}${o.country&&o.country!==(st.home_country||'PK')?', '+esc(countryName(o.country)):''}</p>
+      <ul>${o.items.map(i=>`<li>${esc(i.name)}${i.variant?' ('+esc(i.variant)+')':''} x${i.qty}</li>`).join('')}</ul>${(o.discount||o.shipping||o.payment_note)?`<p>${o.discount?'Discount '+money(o.discount)+(o.coupon_code?' ('+esc(o.coupon_code)+')':'')+'. ':''}${o.shipping?'Shipping '+money(o.shipping)+'. ':''}${o.payment_note?'Payment ref: '+esc(o.payment_note):''}</p>`:''}
+      <div class="order-foot"><strong>${(o.currency&&o.charged_total!=null&&o.currency!==(st.currency||'PKR'))?fmtCur(o.charged_total,o.currency)+' ('+money(o.total)+')':money(o.total)} ${o.payment_method&&o.payment_method!=='cod'?'via '+esc(payLabel(o.payment_method)):'cash on delivery'}</strong>
+        <select data-status="${o.id}" aria-label="Order status">${STATUSES.map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select>
+        <a class="btn small" target="_blank" rel="noopener" href="https://wa.me/${waNum(o.customer_phone)}?text=${encodeURIComponent('Assalam o Alaikum '+o.customer_name+', this is '+st.name+' about your order #'+o.order_no+'.')}">Message customer</a>
+      </div>
+    </article>`).join('')}</div>`;
+}
+function productsPanel(st){
+  const f=D.form;
+  const form=f?`<form class="dashboard-card" id="pForm" style="margin-bottom:18px"><div class="row-head"><h2>${f.id?'Edit product':'Add product'}</h2><button class="btn small" type="button" data-act="cancelform">Close</button></div>
+    <label>Product name<input id="pName" maxlength="120" required value="${esc(f.name||'')}" placeholder="e.g. Wireless Earbuds"></label>
+    <div class="two"><label>Price (Rs.)<input id="pPrice" type="number" min="1" inputmode="numeric" required value="${esc(f.price||'')}"></label><label>Compare-at price (Rs.)<input id="pOld" type="number" min="0" inputmode="numeric" value="${esc(f.old_price||'')}"></label></div>
+    <div class="two"><label>Category<input id="pCat" maxlength="30" placeholder="Electronics, Fashion..." value="${esc(f.category||'')}"></label><label>Visibility<select id="pActive"><option value="true"${f.is_active!==false?' selected':''}>Visible in store</option><option value="false"${f.is_active===false?' selected':''}>Hidden</option></select></label></div>
+    <div class="two"><label>SKU<input id="pSku" maxlength="40" value="${esc(f.sku||'')}" placeholder="Optional SKU"></label><label>Stock (empty = not tracked, 0 = sold out)<input id="pStock" type="number" min="0" value="${f.stock==null?'':esc(f.stock)}" placeholder="Not tracked"></label></div>
+    <label>Variants <span class="fine" style="display:inline">(one per line, e.g. Red | Small | 799)</span><textarea id="pVariants" placeholder="Red | Small | 799\nBlue | Medium | 849">${esc((f.variants||[]).map(v=>[v.name||'',v.option||'',v.price||''].join(' | ')).join('\n'))}</textarea></label>
+    <label>Description<textarea id="pDesc" maxlength="240" placeholder="Short product description">${esc(f.description||'')}</textarea></label>
+    <div class="img-pick"><div class="thumb" id="pThumb">${f.image_url?`<img src="${esc(f.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
+    <div style="display:flex;gap:10px"><button class="btn primary" type="submit">Save product</button><button class="btn" type="button" data-act="cancelform">Cancel</button></div>
+  </form>`:'';
+  const list=MY.products.length?`<div class="dashboard-card"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb">${p.image_url?`<img src="${esc(p.image_url)}" alt="">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="dashboard-card empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
+  return form+list;
+}
+function settingsPanel(st){
+  return `<form class="panel-box" id="sForm">
+    <div class="row-head"><h2>Store settings</h2></div>
+    <div class="two"><label>Store name<input id="sName" maxlength="60" required value="${esc(st.name)}"></label>
+    <label>WhatsApp number<input id="sWa" inputmode="tel" value="${esc(st.whatsapp)}"></label></div>
+    <label>Tagline shown on your store<input id="sTag" maxlength="120" value="${esc(st.tagline||'')}"></label>
+    <label>Store description<textarea id="sDesc" maxlength="500">${esc(st.description||'')}</textarea></label>
+    <fieldset><legend>Store colour</legend><div class="swatches" id="sColors">${COLORS.map(c=>`<button type="button" class="sw" data-scolor="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c.toLowerCase()===st.color.toLowerCase()}"></button>`).join('')}</div></fieldset>
+    <p class="fine" style="margin:0 0 14px">Store link: ${esc(location.href.split('#')[0])}#/s/${esc(st.slug)}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save settings</button><button class="btn danger" type="button" data-act="delstore">Delete this store</button></div>
+  </form>`;
+}
+function toBlob(file,cb){
+  const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>cb(b),'image/jpeg',.82)};im.onerror=()=>toast('That file is not an image');im.src=r.result};
+  r.readAsDataURL(file);
+}
+async function uploadImage(blob){
+  const path=USER.id+'/'+Date.now()+'-'+uid()+'.jpg';
+  const r=await sb.storage.from('product-images').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});
+  if(r.error)throw r.error;
+  return sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+}
+function bindDash(){
   const el=$('#v-dashboard');
-
-  if(!el)return;
-
-  const st=curS();
-
-  if(!st){
-
-    el.innerHTML=`
-      <div class="wrap empty">
-        <h2>Create your first store</h2>
-        <p>
-          Start selling online with EasyBuy.
-        </p>
-        <a
-          class="btn primary"
-          href="#/"
-        >
-          Create store
-        </a>
-      </div>
-    `;
-
-    return;
-  }
-
-  const tabs=[
-    ['overview','Overview'],
-    ['products','Products'],
-    ['orders','Orders'],
-    ['settings','Settings']
-  ];
-
-  el.innerHTML=`
-    <div class="dash-shell">
-
-      <aside class="dash-side">
-
-        <div class="dash-brand">
-          <span
-            class="dash-logo"
-            style="
-              background:${esc(st.color||'#008060')};
-              color:${ink(st.color||'#008060')}
-            "
-          >
-            ${CATS[st.category]||'🛍️'}
-          </span>
-
-          <div>
-            <strong>${esc(st.name)}</strong>
-            <small>Seller dashboard</small>
-          </div>
-        </div>
-
-        <nav class="dash-nav">
-          ${tabs.map(t=>`
-            <button
-              type="button"
-              class="${D.tab===t[0]?'on':''}"
-              data-dtab="${t[0]}"
-            >
-              ${t[1]}
-            </button>
-          `).join('')}
-        </nav>
-
-        <a
-          class="dash-store-link"
-          href="#/s/${esc(st.slug)}"
-          target="_blank"
-          rel="noopener"
-        >
-          View store ↗
-        </a>
-
-      </aside>
-
-      <main class="dash-main">
-
-        <div class="dash-top">
-
-          <div>
-            <p class="eyebrow">SELLER DASHBOARD</p>
-            <h1>${esc(st.name)}</h1>
-            <p class="sub">
-              Manage products, orders and your online store.
-            </p>
-          </div>
-
-          <div class="dash-actions">
-
-            <button
-              class="btn"
-              type="button"
-              data-dash="refresh"
-            >
-              Refresh
-            </button>
-
-            <a
-              class="btn primary"
-              href="#/s/${esc(st.slug)}"
-              target="_blank"
-              rel="noopener"
-            >
-              View store
-            </a>
-
-          </div>
-
-        </div>
-
-        <div id="dashContent"></div>
-
-      </main>
-
-    </div>
-  `;
-
-  drawDashContent();
-}
-
-
-function drawDashContent(){
-
-  const box=$('#dashContent');
-
-  if(!box)return;
-
-  if(D.tab==='overview'){
-    drawOverview(box);
-  }else if(D.tab==='products'){
-    drawProducts(box);
-  }else if(D.tab==='orders'){
-    drawOrders(box);
-  }else if(D.tab==='settings'){
-    drawSettings(box);
-  }
-}
-
-
-/* ---------- overview ---------- */
-
-function drawOverview(box){
-
-  const st=curS();
-
-  const totalOrders=MY.orders.length;
-
-  const revenue=MY.orders
-    .filter(o=>o.status!=='Cancelled')
-    .reduce(
-      (sum,o)=>sum+Number(
-        o.total||o.amount||0
-      ),
-      0
-    );
-
-  const pending=MY.orders.filter(
-    o=>!['Delivered','Cancelled'].includes(
-      o.status
-    )
-  ).length;
-
-  const low=MY.products.filter(
-    p=>lowStock(p)
-  ).length;
-
-  box.innerHTML=`
-
-    <div class="stats">
-
-      <div class="stat">
-        <span>Orders</span>
-        <strong>${totalOrders}</strong>
-        <small>Total orders</small>
-      </div>
-
-      <div class="stat">
-        <span>Revenue</span>
-        <strong>${money(revenue)}</strong>
-        <small>Non-cancelled orders</small>
-      </div>
-
-      <div class="stat">
-        <span>Pending</span>
-        <strong>${pending}</strong>
-        <small>Orders needing action</small>
-      </div>
-
-      <div class="stat">
-        <span>Products</span>
-        <strong>${MY.products.length}</strong>
-        <small>${low} low-stock</small>
-      </div>
-
-    </div>
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Recent orders</h2>
-          <p class="fine">
-            Your latest customer orders.
-          </p>
-        </div>
-
-        <button
-          class="btn small"
-          type="button"
-          data-dtab="orders"
-        >
-          View all
-        </button>
-
-      </div>
-
-      ${
-        MY.orders.length
-        ?`
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-
-              <tbody>
-
-                ${MY.orders.slice(0,6).map(o=>`
-
-                  <tr>
-
-                    <td>
-                      <strong>
-                        ${esc(
-                          o.customer_name||
-                          o.name||
-                          'Customer'
-                        )}
-                      </strong>
-                    </td>
-
-                    <td>
-                      ${money(
-                        o.total||
-                        o.amount||
-                        0
-                      )}
-                    </td>
-
-                    <td>
-                      <span class="status">
-                        ${esc(
-                          o.status||'New'
-                        )}
-                      </span>
-                    </td>
-
-                    <td>
-                      ${formatDate(
-                        o.created_at
-                      )}
-                    </td>
-
-                  </tr>
-
-                `).join('')}
-
-              </tbody>
-            </table>
-          </div>
-        `
-        :`
-          <div class="empty small-empty">
-            <h3>No orders yet</h3>
-            <p>
-              Orders will appear here when customers buy from your store.
-            </p>
-          </div>
-        `
-      }
-
-    </section>
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Store link</h2>
-          <p class="fine">
-            Share this link with your customers.
-          </p>
-        </div>
-
-        <button
-          class="btn small"
-          type="button"
-          data-dash="copy"
-          data-copy="${location.origin}${location.pathname}#/s/${esc(st.slug)}"
-        >
-          Copy link
-        </button>
-
-      </div>
-
-      <div class="store-url">
-        ${esc(
-          location.origin+
-          location.pathname+
-          '#/s/'+
-          st.slug
-        )}
-      </div>
-
-    </section>
-  `;
-}
-
-
-function formatDate(v){
-
-  if(!v)return '—';
-
-  try{
-
-    return new Date(v).toLocaleDateString(
-      'en-PK',
-      {
-        day:'2-digit',
-        month:'short',
-        year:'numeric'
-      }
-    );
-
-  }catch(e){
-
-    return '—';
-  }
-}
-
-
-/* ---------- products ---------- */
-
-function drawProducts(box){
-
-  box.innerHTML=`
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Products</h2>
-          <p class="fine">
-            Add and manage the products customers can buy.
-          </p>
-        </div>
-
-        <button
-          class="btn primary"
-          type="button"
-          data-product-form="new"
-        >
-          + Add product
-        </button>
-
-      </div>
-
-      <div class="product-admin-list">
-
-        ${
-          MY.products.length
-          ?MY.products.map(p=>`
-
-            <article class="admin-product">
-
-              <div class="admin-product-img">
-
-                ${
-                  p.image_url
-                  ?`
-                    <img
-                      src="${esc(p.image_url)}"
-                      alt="${esc(p.name)}"
-                      loading="lazy"
-                    >
-                  `
-                  :(CATS[p.category]||'🛍️')
-                }
-
-              </div>
-
-              <div class="admin-product-info">
-
-                <h3>
-                  ${esc(p.name)}
-                </h3>
-
-                <p class="fine">
-                  ${esc(p.category||'Uncategorized')}
-                </p>
-
-                <strong>
-                  ${money(p.price)}
-                </strong>
-
-                ${
-                  p.stock!=null
-                  ?`
-                    <small>
-                      Stock: ${p.stock}
-                    </small>
-                  `
-                  :''
-                }
-
-              </div>
-
-              <div class="admin-product-actions">
-
-                <span class="status">
-                  ${
-                    p.is_active
-                    ?'Active'
-                    :'Hidden'
-                  }
-                </span>
-
-                <button
-                  class="btn small"
-                  type="button"
-                  data-product-form="${p.id}"
-                >
-                  Edit
-                </button>
-
-                <button
-                  class="btn small danger"
-                  type="button"
-                  data-product-delete="${p.id}"
-                >
-                  Delete
-                </button>
-
-              </div>
-
-            </article>
-
-          `).join('')
-          :`
-            <div class="empty small-empty">
-
-              <h3>No products yet</h3>
-
-              <p>
-                Add your first product to start selling.
-              </p>
-
-              <button
-                class="btn primary"
-                type="button"
-                data-product-form="new"
-              >
-                Add first product
-              </button>
-
-            </div>
-          `
-        }
-
-      </div>
-
-    </section>
-
-    ${
-      D.form
-      ?productForm()
-      :''
-    }
-
-  `;
-}
-
-
-function productForm(){
-
-  const p=D.form||{};
-
-  return `
-
-    <section class="dash-card product-editor">
-
-      <div class="section-head">
-
-        <div>
-          <h2>
-            ${p.id?'Edit product':'Add product'}
-          </h2>
-
-          <p class="fine">
-            Keep product information clear and accurate.
-          </p>
-        </div>
-
-        <button
-          class="btn small"
-          type="button"
-          data-product-cancel
-        >
-          Cancel
-        </button>
-
-      </div>
-
-      <form id="pForm">
-
-        <div class="form-grid">
-
-          <label>
-            Product name
-            <input
-              id="pName"
-              required
-              maxlength="120"
-              value="${esc(p.name||'')}"
-              placeholder="e.g. Premium Pet Bowl"
-            >
-          </label>
-
-          <label>
-            Price
-            <input
-              id="pPrice"
-              type="number"
-              min="0"
-              step="1"
-              required
-              value="${p.price||''}"
-              placeholder="1499"
-            >
-          </label>
-
-          <label>
-            Compare-at price
-            <input
-              id="pOld"
-              type="number"
-              min="0"
-              step="1"
-              value="${p.old_price||''}"
-              placeholder="1999"
-            >
-          </label>
-
-          <label>
-            Category
-            <input
-              id="pCat"
-              maxlength="60"
-              value="${esc(p.category||'')}"
-              placeholder="Pets"
-            >
-          </label>
-
-          <label>
-            SKU
-            <input
-              id="pSku"
-              maxlength="60"
-              value="${esc(p.sku||'')}"
-              placeholder="PET-001"
-            >
-          </label>
-
-          <label>
-            Stock
-            <input
-              id="pStock"
-              type="number"
-              min="0"
-              step="1"
-              value="${
-                p.stock==null
-                  ?''
-                  :p.stock
-              }"
-              placeholder="Leave empty for unlimited"
-            >
-          </label>
-
-        </div>
-
-        <label>
-          Description
-          <textarea
-            id="pDesc"
-            maxlength="2000"
-            placeholder="Describe the product..."
-          >${esc(p.description||'')}</textarea>
-        </label>
-
-        <label>
-          Product image URL
-          <input
-            id="pImage"
-            type="url"
-            value="${esc(p.image_url||'')}"
-            placeholder="https://..."
-          >
-        </label>
-
-        <label>
-          Variants
-          <textarea
-            id="pVariants"
-            placeholder="Color | Blue | 1499
-Color | Black | 1599"
-          >${
-            Array.isArray(p.variants)
-            ?p.variants.map(v=>[
-              v.name||'',
-              v.option||'',
-              v.price||''
-            ].join(' | ')).join('\n')
-            :''
-          }</textarea>
-
-          <small class="fine">
-            One variant per line:
-            Name | Option | Price
-          </small>
-
-        </label>
-
-        <label>
-          Product status
-          <select id="pActive">
-
-            <option
-              value="true"
-              ${p.is_active!==false?'selected':''}
-            >
-              Active
-            </option>
-
-            <option
-              value="false"
-              ${p.is_active===false?'selected':''}
-            >
-              Hidden
-            </option>
-
-          </select>
-        </label>
-
-        <div class="form-actions">
-
-          <button
-            class="btn"
-            type="button"
-            data-product-cancel
-          >
-            Cancel
-          </button>
-
-          <button
-            class="btn primary"
-            type="submit"
-          >
-            Save product
-          </button>
-
-        </div>
-
-      </form>
-
-    </section>
-  `;
-}
-
-
-function formatOrderStatus(status){
-
-  return STATUSES.includes(status)
-    ?status
-    :'New';
-}
-
-
-/* ---------- orders ---------- */
-
-function drawOrders(box){
-
-  box.innerHTML=`
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Orders</h2>
-
-          <p class="fine">
-            Manage customer orders and update their status.
-          </p>
-
-        </div>
-
-      </div>
-
-      ${
-        MY.orders.length
-        ?`
-          <div class="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-                  <th>Customer</th>
-                  <th>Phone</th>
-                  <th>Total</th>
-                  <th>Payment</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                ${MY.orders.map(o=>`
-
-                  <tr>
-
-                    <td>
-                      <strong>
-                        ${esc(
-                          o.customer_name||
-                          o.name||
-                          'Customer'
-                        )}
-                      </strong>
-
-                      <small>
-                        ${esc(
-                          o.city||''
-                        )}
-                      </small>
-                    </td>
-
-                    <td>
-                      ${esc(
-                        o.phone||
-                        o.customer_phone||
-                        '—'
-                      )}
-                    </td>
-
-                    <td>
-                      ${money(
-                        o.total||
-                        o.amount||
-                        0
-                      )}
-                    </td>
-
-                    <td>
-                      ${esc(
-                        payLabel(
-                          o.payment_method||
-                          o.payment||
-                          'cod'
-                        )
-                      )}
-                    </td>
-
-                    <td>
-
-                      <select
-                        class="order-status"
-                        data-order-status="${o.id}"
-                      >
-
-                        ${STATUSES.map(s=>`
-
-                          <option
-                            value="${s}"
-                            ${
-                              formatOrderStatus(
-                                o.status
-                              )===s
-                              ?'selected'
-                              :''
-                            }
-                          >
-                            ${s}
-                          </option>
-
-                        `).join('')}
-
-                      </select>
-
-                    </td>
-
-                    <td>
-                      ${formatDate(o.created_at)}
-                    </td>
-
-                  </tr>
-
-                `).join('')}
-
-              </tbody>
-
-            </table>
-
-          </div>
-        `
-        :`
-          <div class="empty small-empty">
-
-            <h3>No orders yet</h3>
-
-            <p>
-              Customer orders will appear here.
-            </p>
-
-          </div>
-        `
-      }
-
-    </section>
-
-  `;
-}
-
-
-/* ---------- settings ---------- */
-
-function drawSettings(box){
-
-  const st=curS();
-
-  box.innerHTML=`
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Store settings</h2>
-          <p class="fine">
-            Update your storefront information.
-          </p>
-        </div>
-
-      </div>
-
-      <form id="sForm">
-
-        <div class="form-grid">
-
-          <label>
-            Store name
-            <input
-              id="sName"
-              required
-              maxlength="100"
-              value="${esc(st.name||'')}"
-            >
-          </label>
-
-          <label>
-            WhatsApp number
-            <input
-              id="sWa"
-              inputmode="tel"
-              value="${esc(st.whatsapp||'')}"
-              placeholder="923001234567"
-            >
-          </label>
-
-        </div>
-
-        <label>
-          Tagline
-          <input
-            id="sTag"
-            maxlength="180"
-            value="${esc(st.tagline||'')}"
-            placeholder="Quality products delivered to your door."
-          >
-        </label>
-
-        <label>
-          Store description
-          <textarea
-            id="sDesc"
-            maxlength="2000"
-          >${esc(st.description||'')}</textarea>
-        </label>
-
-        <div>
-
-          <p class="fine">
-            Store colour
-          </p>
-
-          <div
-            class="color-picker"
-            id="sColors"
-          >
-
-            ${COLORS.map(c=>`
-
-              <button
-                type="button"
-                class="sw"
-                data-scolor="${c}"
-                style="background:${c}"
-                aria-label="Choose ${c}"
-                aria-pressed="${
-                  c===(st.color||COLORS[0])
-                }"
-              ></button>
-
-            `).join('')}
-
-          </div>
-
-        </div>
-
-        <div class="form-actions">
-
-          <button
-            class="btn primary"
-            type="submit"
-          >
-            Save settings
-          </button>
-
-        </div>
-
-      </form>
-
-    </section>
-
-    <section class="dash-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Store link</h2>
-          <p class="fine">
-            Your public EasyBuy store.
-          </p>
-        </div>
-
-      </div>
-
-      <div class="store-url">
-        ${location.origin}${location.pathname}#/s/${esc(st.slug)}
-      </div>
-
-    </section>
-
-  `;
-}
-
-
-/* ---------- dashboard state ---------- */
-
-D.form=null;
-D.file=null;
-D.color=null;
-
-
-function editProduct(id){
-
-  const p=MY.products.find(
-    x=>x.id===id
-  );
-
-  if(!p)return;
-
-  D.form={
-    ...p,
-    variants:Array.isArray(p.variants)
-      ?p.variants
-      :[]
-  };
-
-  D.file=null;
-
-  drawDashContent();
-
-  setTimeout(()=>{
-    $('#pName')?.focus();
-  },50);
-}
-
-
-function newProduct(){
-
-  D.form={
-    id:null,
-    name:'',
-    price:'',
-    old_price:'',
-    category:curS()?.category||'',
-    description:'',
-    image_url:'',
-    sku:'',
-    stock:null,
-    variants:[],
-    is_active:true
-  };
-
-  D.file=null;
-
-  drawDashContent();
-
-  setTimeout(()=>{
-    $('#pName')?.focus();
-  },50);
-}
-
-
-/* ---------- dashboard events ---------- */
-
-document.addEventListener(
-  'click',
-  async e=>{
-
-    const tab=e.target.closest(
-      '[data-dtab]'
-    );
-
-    if(tab){
-
-      D.tab=tab.dataset.dtab;
-
-      drawDashContent();
-
-      $$('.dash-nav button').forEach(b=>{
-        b.classList.toggle(
-          'on',
-          b.dataset.dtab===D.tab
-        );
-      });
-
-      return;
-    }
-
-    const dashTab=e.target.closest(
-      '[data-dtab]'
-    );
-
-    if(
-      dashTab &&
-      $('#v-dashboard')?.hidden===false
-    ){
-
-      D.tab=dashTab.dataset.dtab;
-
-      drawDashContent();
-
-      return;
-    }
-
-    const pf=e.target.closest(
-      '[data-product-form]'
-    );
-
-    if(pf){
-
-      if(pf.dataset.productForm==='new'){
-        newProduct();
-      }else{
-        editProduct(
-          pf.dataset.productForm
-        );
-      }
-
-      return;
-    }
-
-    if(
-      e.target.closest(
-        '[data-product-cancel]'
-      )
-    ){
-
-      D.form=null;
-
-      drawDashContent();
-
-      return;
-    }
-
-    const del=e.target.closest(
-      '[data-product-delete]'
-    );
-
-    if(del){
-
-      const id=
-        del.dataset.productDelete;
-
-      const p=
-        MY.products.find(
-          x=>x.id===id
-        );
-
-      if(
-        !p ||
-        !confirm(
-          `Delete "${p.name}"?`
-        )
-      )return;
-
-      await busy(
-        del,
-        async()=>{
-
-          ok(
-            await sb
-              .from('products')
-              .delete()
-              .eq('id',id)
-          );
-
-          await loadStoreData();
-
-          drawDashContent();
-
-          toast(
-            'Product deleted'
-          );
-        }
-      );
-
-      return;
-    }
-
-    const refresh=e.target.closest(
-      '[data-dash="refresh"]'
-    );
-
-    if(refresh){
-
-      await busy(
-        refresh,
-        async()=>{
-
-          await loadDash();
-
-          toast(
-            'Dashboard refreshed'
-          );
-        }
-      );
-
-      return;
-    }
-
-    const copy=e.target.closest(
-      '[data-dash="copy"]'
-    );
-
-    if(copy){
-
-      const value=
-        copy.dataset.copy||'';
-
-      try{
-
-        await navigator.clipboard.writeText(
-          value
-        );
-
-        toast(
-          'Store link copied'
-        );
-
-      }catch(err){
-
-        toast(
-          'Could not copy the link'
-        );
-      }
-
-      return;
-    }
-
-    const color=e.target.closest(
-      '[data-scolor]'
-    );
-
-    if(color){
-
-      D.color=color.dataset.scolor;
-
-      $$('#sColors [data-scolor]').forEach(b=>{
-        b.setAttribute(
-          'aria-pressed',
-          b===color
-        );
-      });
-
-      return;
-    }
-
-    const orderStatus=e.target.closest(
-      '[data-order-status]'
-    );
-
-    if(orderStatus){
-
-      const id=
-        orderStatus.dataset.orderStatus;
-
-      const status=
-        orderStatus.value;
-
-      await busy(
-        orderStatus,
-        async()=>{
-
-          ok(
-            await sb
-              .from('orders')
-              .update({status})
-              .eq('id',id)
-          );
-
-          const order=
-            MY.orders.find(
-              x=>x.id===id
-            );
-
-          if(order){
-            order.status=status;
-          }
-
-          toast(
-            'Order status updated'
-          );
-        }
-      );
-
-      return;
-    }
-  }
-);
-
-
-/* ---------- dashboard forms ---------- */
-
-document.addEventListener(
-  'submit',
-  async e=>{
-
+  el.addEventListener('click',async e=>{
+    const st=curS();
+    const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
+    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50);return}
+    if(!st)return;
+    const ed=e.target.closest('[data-edit]');if(ed){D.form={...MY.products.find(x=>x.id===ed.dataset.edit)};D.file=null;renderDash();$('#pForm')&&$('#pForm').scrollIntoView();return}
+    const dl=e.target.closest('[data-del]');
+    if(dl){const p=MY.products.find(x=>x.id===dl.dataset.del);
+      if(p&&confirm('Delete "'+p.name+'"?'))await busy(dl,async()=>{ok(await sb.from('products').delete().eq('id',p.id));await loadStoreData();renderDash();toast('Product deleted')});return}
+    const sc=e.target.closest('[data-scolor]');if(sc){D.color=sc.dataset.scolor;$$('#sColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===sc));return}
+    const a=e.target.closest('[data-act]');if(!a)return;
+    const act=a.dataset.act;
+    if(act==='addproduct'){D.form={};D.file=null;renderDash();$('#pName')&&$('#pName').focus()}
+    if(act==='cancelform'){D.form=null;D.file=null;renderDash()}
+    if(act==='refresh')await busy(a,async()=>{await loadStoreData();renderDash();toast('Updated')});
+    if(act==='newstore'){location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50)}
+    if(act==='copy'){const url=location.href.split('#')[0]+'#/s/'+st.slug;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Store link copied'),()=>toast(url))}
+    if(act==='delstore'&&confirm('Delete "'+st.name+'" with all its products and orders? This cannot be undone.'))
+      await busy(a,async()=>{ok(await sb.from('stores').delete().eq('id',st.id));MY.active=null;await loadDash();toast('Store deleted')});
+  });
+  el.addEventListener('change',async e=>{
+    if(e.target.id==='storeSel'){MY.active=e.target.value;D.form=null;await loadStoreData();renderDash();return}
+    if(e.target.dataset.status){const o=MY.orders.find(x=>x.id===e.target.dataset.status);
+      if(o)await busy(e.target,async()=>{ok(await sb.from('orders').update({status:e.target.value}).eq('id',o.id));o.status=e.target.value;renderDash();toast('Order #'+o.order_no+' marked '+o.status)});return}
+    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="">'})}
+  });
+  el.addEventListener('submit',async e=>{
+    e.preventDefault();const st=curS();const btn=e.submitter;
     if(e.target.id==='pForm'){
-
-      e.preventDefault();
-
-      const st=curS();
-
-      if(!st)return;
-
-      const btn=
-        e.submitter||
-        e.target.querySelector(
-          'button[type=submit]'
-        );
-
-      await busy(
-        btn,
-        async()=>{
-
-          const price=
-            Math.max(
-              0,
-              parseInt(
-                $('#pPrice').value,
-                10
-              )||0
-            );
-
-          const image_url=
-            $('#pImage').value.trim();
-
-          const variants=
-            $('#pVariants').value
-              .split('\n')
-              .map(
-                x=>x.trim()
-              )
-              .filter(Boolean)
-              .map(line=>{
-
-                const a=
-                  line
-                    .split('|')
-                    .map(
-                      v=>v.trim()
-                    );
-
-                return {
-                  name:a[0]||'',
-                  option:a[1]||'',
-                  price:
-                    parseInt(
-                      a[2],
-                      10
-                    )||price
-                };
-              });
-
-          const row={
-            store_id:st.id,
-            name:$('#pName').value.trim(),
-            price,
-            old_price:
-              parseInt(
-                $('#pOld').value,
-                10
-              )||0,
-            category:
-              $('#pCat').value.trim(),
-            description:
-              $('#pDesc').value.trim(),
-            image_url,
-            is_active:
-              $('#pActive').value==='true',
-            sku:
-              $('#pSku').value.trim(),
-            stock:
-              $('#pStock').value.trim()===''
-                ?null
-                :Math.max(
-                  0,
-                  parseInt(
-                    $('#pStock').value,
-                    10
-                  )||0
-                ),
-            variants
-          };
-
-          if(!row.name){
-            throw new Error(
-              'Product name is required.'
-            );
-          }
-
-          if(
-            D.form &&
-            D.form.id
-          ){
-
-            ok(
-              await sb
-                .from('products')
-                .update(row)
-                .eq(
-                  'id',
-                  D.form.id
-                )
-            );
-
-          }else{
-
-            ok(
-              await sb
-                .from('products')
-                .insert(row)
-            );
-          }
-
-          D.form=null;
-
-          await loadStoreData();
-
-          drawDashContent();
-
-          toast(
-            'Product saved'
-          );
-        }
-      );
-
-      return;
+      const price=parseInt($('#pPrice').value,10);
+      if(!$('#pName').value.trim()||!(price>0)){toast('Add a name and a price');return}
+      await busy(btn,async()=>{
+        let image_url=D.form.image_url||'';
+        if(D.file)image_url=await uploadImage(D.file);
+        const variants=$('#pVariants').value.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const a=line.split('|').map(v=>v.trim());return {name:a[0]||'',option:a[1]||'',price:parseInt(a[2],10)||price}}); const row={store_id:st.id,name:$('#pName').value.trim(),price,old_price:parseInt($('#pOld').value,10)||0,category:$('#pCat').value.trim(),description:$('#pDesc').value.trim(),image_url,is_active:$('#pActive').value==='true',sku:$('#pSku').value.trim(),stock:$('#pStock').value.trim()===''?null:Math.max(0,parseInt($('#pStock').value,10)||0),variants};
+        ok(D.form.id?await sb.from('products').update(row).eq('id',D.form.id):await sb.from('products').insert(row));
+        D.form=null;D.file=null;await loadStoreData();renderDash();toast('Product saved');
+      });
     }
-
     if(e.target.id==='sForm'){
-
-      e.preventDefault();
-
-      const st=curS();
-
-      if(!st)return;
-
-      const btn=
-        e.submitter||
-        e.target.querySelector(
-          'button[type=submit]'
-        );
-
-      await busy(
-        btn,
-        async()=>{
-
-          const upd={
-            name:
-              $('#sName').value.trim()||
-              st.name,
-
-            whatsapp:
-              $('#sWa').value.trim(),
-
-            tagline:
-              $('#sTag').value.trim(),
-
-            description:
-              $('#sDesc').value.trim()
-          };
-
-          if(D.color){
-            upd.color=D.color;
-          }
-
-          ok(
-            await sb
-              .from('stores')
-              .update(upd)
-              .eq(
-                'id',
-                st.id
-              )
-          );
-
-          D.color=null;
-
-          await loadDash();
-
-          toast(
-            'Settings saved'
-          );
-        }
-      );
-
-      return;
+      await busy(btn,async()=>{
+        const upd={name:$('#sName').value.trim()||st.name,whatsapp:$('#sWa').value.trim(),tagline:$('#sTag').value.trim(),description:$('#sDesc').value.trim()};
+        if(D.color)upd.color=D.color;
+        ok(await sb.from('stores').update(upd).eq('id',st.id));
+        D.color=null;await loadDash();toast('Settings saved');
+      });
     }
-  }
-);
+  });
+}
 
 
 /* ---------- international helpers ---------- */
-
 const COUNTRIES=[
-
-  {
-    code:'PK',
-    name:'Pakistan',
-    cur:'PKR',
-    dial:'+92'
-  },
-
-  {
-    code:'US',
-    name:'United States',
-    cur:'USD',
-    dial:'+1'
-  },
-
-  {
-    code:'GB',
-    name:'United Kingdom',
-    cur:'GBP',
-    dial:'+44'
-  },
-
-  {
-    code:'CA',
-    name:'Canada',
-    cur:'CAD',
-    dial:'+1'
-  },
-
-  {
-    code:'AU',
-    name:'Australia',
-    cur:'AUD',
-    dial:'+61'
-  },
-
-  {
-    code:'NZ',
-    name:'New Zealand',
-    cur:'NZD',
-    dial:'+64'
-  },
-
-  {
-    code:'AE',
-    name:'United Arab Emirates',
-    cur:'AED',
-    dial:'+971'
-  },
-
-  {
-    code:'SA',
-    name:'Saudi Arabia',
-    cur:'SAR',
-    dial:'+966'
-  },
-
-  {
-    code:'QA',
-    name:'Qatar',
-    cur:'QAR',
-    dial:'+974'
-  },
-
-  {
-    code:'KW',
-    name:'Kuwait',
-    cur:'KWD',
-    dial:'+965'
-  },
-
-  {
-    code:'OM',
-    name:'Oman',
-    cur:'OMR',
-    dial:'+968'
-  },
-
-  {
-    code:'BH',
-    name:'Bahrain',
-    cur:'BHD',
-    dial:'+973'
-  },
-
-  {
-    code:'DE',
-    name:'Germany',
-    cur:'EUR',
-    dial:'+49'
-  },
-
-  {
-    code:'FR',
-    name:'France',
-    cur:'EUR',
-    dial:'+33'
-  },
-
-  {
-    code:'IT',
-    name:'Italy',
-    cur:'EUR',
-    dial:'+39'
-  },
-
-  {
-    code:'ES',
-    name:'Spain',
-    cur:'EUR',
-    dial:'+34'
-  },
-
-  {
-    code:'NL',
-    name:'Netherlands',
-    cur:'EUR',
-    dial:'+31'
-  },
-
-  {
-    code:'IE',
-    name:'Ireland',
-    cur:'EUR',
-    dial:'+353'
-  },
-
-  {
-    code:'TR',
-    name:'Turkey',
-    cur:'TRY',
-    dial:'+90'
-  },
-
-  {
-    code:'MY',
-    name:'Malaysia',
-    cur:'MYR',
-    dial:'+60'
-  },
-
-  {
-    code:'SG',
-    name:'Singapore',
-    cur:'SGD',
-    dial:'+65'
-  }
-
-];
-
-
-const countryOf=c=>
-  COUNTRIES.find(
-    x=>x.code===c
-  );
-
-
-const countryName=c=>
-  (
-    countryOf(c)||
-    {name:c}
-  ).name;
-
-
-function decOf(c){
-
-  c=(c||'').toUpperCase();
-
-  if(
-    [
-      'PKR',
-      'JPY',
-      'KRW',
-      'VND',
-      'CLP',
-      'ISK',
-      'UGX'
-    ].includes(c)
-  ){
-    return 0;
-  }
-
-  if(
-    [
-      'KWD',
-      'BHD',
-      'OMR',
-      'JOD',
-      'TND'
-    ].includes(c)
-  ){
-    return 3;
-  }
-
-  return 2;
-}
-
-
+ {code:'PK',name:'Pakistan',cur:'PKR',dial:'+92'},{code:'US',name:'United States',cur:'USD',dial:'+1'},
+ {code:'GB',name:'United Kingdom',cur:'GBP',dial:'+44'},{code:'CA',name:'Canada',cur:'CAD',dial:'+1'},
+ {code:'AU',name:'Australia',cur:'AUD',dial:'+61'},{code:'NZ',name:'New Zealand',cur:'NZD',dial:'+64'},
+ {code:'AE',name:'United Arab Emirates',cur:'AED',dial:'+971'},{code:'SA',name:'Saudi Arabia',cur:'SAR',dial:'+966'},
+ {code:'QA',name:'Qatar',cur:'QAR',dial:'+974'},{code:'KW',name:'Kuwait',cur:'KWD',dial:'+965'},
+ {code:'OM',name:'Oman',cur:'OMR',dial:'+968'},{code:'BH',name:'Bahrain',cur:'BHD',dial:'+973'},
+ {code:'DE',name:'Germany',cur:'EUR',dial:'+49'},{code:'FR',name:'France',cur:'EUR',dial:'+33'},
+ {code:'IT',name:'Italy',cur:'EUR',dial:'+39'},{code:'ES',name:'Spain',cur:'EUR',dial:'+34'},
+ {code:'NL',name:'Netherlands',cur:'EUR',dial:'+31'},{code:'IE',name:'Ireland',cur:'EUR',dial:'+353'},
+ {code:'TR',name:'Turkey',cur:'TRY',dial:'+90'},{code:'MY',name:'Malaysia',cur:'MYR',dial:'+60'},
+ {code:'SG',name:'Singapore',cur:'SGD',dial:'+65'}];
+const countryOf=c=>COUNTRIES.find(x=>x.code===c);
+const countryName=c=>(countryOf(c)||{name:c}).name;
+function decOf(c){c=(c||'').toUpperCase();return ['PKR','JPY','KRW','VND','CLP','ISK','UGX'].includes(c)?0:['KWD','BHD','OMR','JOD','TND'].includes(c)?3:2}
 function fmtCur(n,cur){
-
   cur=(cur||'PKR').toUpperCase();
-
-  if(cur==='PKR'){
-    return money(n);
-  }
-
+  if(cur==='PKR')return money(n);
   const d=decOf(cur);
-
-  try{
-
-    return new Intl.NumberFormat(
-      'en',
-      {
-        style:'currency',
-        currency:cur,
-        currencyDisplay:'code',
-        minimumFractionDigits:d,
-        maximumFractionDigits:d
-      }
-    )
-    .format(n)
-    .replace(/\u00a0/g,' ');
-
-  }catch(e){
-
-    return cur+
-      ' '+
-      Number(n).toFixed(d);
-  }
+  try{return new Intl.NumberFormat('en',{style:'currency',currency:cur,currencyDisplay:'code',minimumFractionDigits:d,maximumFractionDigits:d}).format(n).replace(/\u00a0/g,' ')}
+  catch(e){return cur+' '+Number(n).toFixed(d)}
 }
-
-
 /* ---------- storefront ---------- */
-
-let SF={
-  store:null,
-  products:[],
-  reviews:[],
-  q:'',
-  cat:'',
-  quote:null,
-  country:''
-};
-
-
-const cartKey=()=>
-  'eb.cart.'+
-  SF.store.id;
-
-
-function getCart(){
-
-  try{
-
-    const c=
-      JSON.parse(
-        lsGet(cartKey())||
-        '[]'
-      );
-
-    return Array.isArray(c)
-      ?c
-      :[];
-
-  }catch(e){
-
-    return [];
-  }
-}
-
-
-function setCart(c){
-
-  lsSet(
-    cartKey(),
-    JSON.stringify(c)
-  );
-}
-
-
-const PAY={
-  cod:'Cash on Delivery',
-  bank:'Bank transfer',
-  easypaisa:'Easypaisa',
-  jazzcash:'JazzCash'
-};
-
-
-const payLabel=m=>
-  PAY[m]||m;
-
-
-const varLabel=v=>
-  [
-    v&&v.name,
-    v&&v.option
-  ]
-  .map(
-    x=>String(x||'').trim()
-  )
-  .filter(Boolean)
-  .join(' / ');
-
-
-const isSold=p=>
-  p.stock!=null&&
-  p.stock<=0;
-
-
-const lowStock=p=>
-  p.stock!=null&&
-  p.stock>0&&
-  p.stock<=5;
-
-
-const stars=n=>{
-
-  const k=Math.round(n);
-
-  return '★'.repeat(k)+
-    '☆'.repeat(5-k);
-};
-
-
+let SF={store:null,products:[],reviews:[],q:'',cat:'',quote:null,country:''};
+const cartKey=()=>'eb.cart.'+SF.store.id;
+function getCart(){try{const c=JSON.parse(lsGet(cartKey())||'[]');return Array.isArray(c)?c:[]}catch(e){return[]}}
+function setCart(c){lsSet(cartKey(),JSON.stringify(c))}
+const PAY={cod:'Cash on Delivery',bank:'Bank transfer',easypaisa:'Easypaisa',jazzcash:'JazzCash'};
+const payLabel=m=>PAY[m]||m;
+const varLabel=v=>[v&&v.name,v&&v.option].map(x=>String(x||'').trim()).filter(Boolean).join(' / ');
+const isSold=p=>p.stock!=null&&p.stock<=0;
+const lowStock=p=>p.stock!=null&&p.stock>0&&p.stock<=5;
+const stars=n=>{const k=Math.round(n);return '★'.repeat(k)+'☆'.repeat(5-k)};
 function unitPrice(p,variant){
-
-  if(
-    variant&&
-    Array.isArray(p.variants)
-  ){
-
-    const v=
-      p.variants.find(
-        x=>varLabel(x)===variant
-      );
-
-    if(
-      v&&
-      v.price>0
-    ){
-      return v.price;
-    }
-  }
-
+  if(variant&&Array.isArray(p.variants)){const v=p.variants.find(x=>varLabel(x)===variant);if(v&&v.price>0)return v.price}
   return p.price;
 }
-
-
-const homeCountry=st=>
-  st.home_country||'PK';
-
-
+const homeCountry=st=>st.home_country||'PK';
 function marketList(st){
-
-  const h={
-    country:homeCountry(st),
-    currency:st.currency||'PKR',
-    rate:1,
-    shipping:st.shipping_fee||0,
-    free_min:st.free_shipping_min||0,
-
-    payment_methods:
-      (
-        Array.isArray(
-          st.payment_methods
-        )&&
-        st.payment_methods.length
-      )
-      ?st.payment_methods
-      :['cod'],
-
-    home:true
-  };
-
-  return [
-    h,
-    ...(Array.isArray(st.markets)
-      ?st.markets
-      :[])
-  ];
+  const h={country:homeCountry(st),currency:st.currency||'PKR',rate:1,shipping:st.shipping_fee||0,free_min:st.free_shipping_min||0,
+    payment_methods:(Array.isArray(st.payment_methods)&&st.payment_methods.length?st.payment_methods:['cod']),home:true};
+  return [h,...(Array.isArray(st.markets)?st.markets:[])];
 }
-
-
-function curMarket(){
-
-  const l=
-    marketList(
-      SF.store
-    );
-
-  return l.find(
-    m=>m.country===SF.country
-  )||l[0];
-}
-
-
-function mp(base){
-
-  const m=curMarket();
-
-  const d=
-    decOf(m.currency);
-
-  const k=
-    Math.pow(10,d);
-
-  return fmtCur(
-    Math.round(
-      base*m.rate*k
-    )/k,
-    m.currency
-  );
-}
-
-
+function curMarket(){const l=marketList(SF.store);return l.find(m=>m.country===SF.country)||l[0]}
+function mp(base){const m=curMarket(),d=decOf(m.currency),k=Math.pow(10,d);return fmtCur(Math.round(base*m.rate*k)/k,m.currency)}
 function priceHtml(p,variant){
-
-  const vs=
-    Array.isArray(p.variants)
-      ?p.variants
-      :[];
-
-  if(variant){
-    return mp(
-      unitPrice(
-        p,
-        variant
-      )
-    );
-  }
-
-  if(vs.length){
-
-    const prices=
-      vs.map(
-        v=>v.price>0
-          ?v.price
-          :p.price
-      );
-
-    const lo=
-      Math.min(...prices);
-
-    const hi=
-      Math.max(...prices);
-
-    return (
-      lo===hi
-        ?''
-        :'From '
-    )+
-      mp(lo);
-  }
-
-  return mp(p.price)+
-    (
-      p.old_price>p.price
-      ?`<s>${mp(p.old_price)}</s>`
-      :''
-    );
+  const vs=Array.isArray(p.variants)?p.variants:[];
+  if(variant)return mp(unitPrice(p,variant));
+  if(vs.length){const prices=vs.map(v=>v.price>0?v.price:p.price);const lo=Math.min(...prices),hi=Math.max(...prices);return (lo===hi?'':'From ')+mp(lo)}
+  return mp(p.price)+(p.old_price>p.price?`<s>${mp(p.old_price)}</s>`:'');
 }
-
-
-function ratingOf(pid){
-
-  const r=
-    SF.reviews.filter(
-      x=>x.product_id===pid
-    );
-
-  return r.length
-    ?{
-        avg:
-          r.reduce(
-            (a,b)=>a+b.rating,
-            0
-          )/r.length,
-
-        n:r.length
+function ratingOf(pid){const r=SF.reviews.filter(x=>x.product_id===pid);return r.length?{avg:r.reduce((a,b)=>a+b.rating,0)/r.length,n:r.length}:null}
+function validCart(){return getCart().filter(i=>SF.products.some(p=>p.id===i.id))}
+const cartItem=i=>({product_id:i.id,qty:i.qty,variant:i.variant||''});
+function addToCart(pid,variant){
+  const p=SF.products.find(x=>x.id===pid);if(!p)return false;
+  if(isSold(p)){toast(p.name+' is sold out');return false}
+  const vs=Array.isArray(p.variants)?p.variants:[];
+  if(vs.length&&!variant){toast('Please choose an option first');return false}
+  const c=getCart(),inCart=c.filter(i=>i.id===pid).reduce((a,b)=>a+b.qty,0);
+  if(p.stock!=null&&inCart+1>p.stock){toast('Only '+p.stock+' available');return false}
+  const x=c.find(i=>i.id===pid&&(i.variant||'')===(variant||''));
+  x?x.qty=Math.min(99,x.qty+1):c.push({id:pid,qty:1,variant:variant||''});
+  setCart(c);drawCart();return true;
+}
+async function renderStore(slug){
+  const el=$('#v-store');
+  el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
+  let st=null,prods=[],revs=[];
+  try{
+    if(!sb)throw new Error('Supabase keys are missing in config.js');
+    st=ok(await sb.from('stores').select('*').eq('slug',slug||'').maybeSingle());
+    if(st){
+      prods=ok(await sb.from('products').select('*').eq('store_id',st.id).eq('is_active',true).order('created_at'));
+      const rr=await sb.rpc('get_reviews',{p_store:st.id});revs=rr.error?[]:(rr.data||[]);
+    }
+  }catch(e){el.innerHTML='<div class="wrap empty" style="padding-top:80px"><h2>Could not load this store</h2><p>'+esc(e.message)+'</p><a class="btn primary" href="#/">Back to EasyBuy</a></div>';return}
+  if(!st){el.innerHTML='<div class="wrap empty" style="padding-top:80px"><h2>Store not found</h2><p>Check the link, or ask the seller to send it again.</p><a class="btn primary" href="#/">Back to EasyBuy</a></div>';return}
+  SF={store:st,products:prods,reviews:revs,q:'',cat:'',quote:null,country:''};
+  {const saved=lsGet('eb.country.'+st.id),ml=marketList(st);SF.country=ml.some(m=>m.country===saved)?saved:homeCountry(st)}
+  const methods=Array.isArray(st.payment_methods)&&st.payment_methods.length?st.payment_methods:['cod'];
+  document.title=st.name+' on EasyBuy';
+  el.style.setProperty('--accent',st.color);el.style.setProperty('--on-accent',ink(st.color));
+  el.innerHTML=`
+  <div class="eb-bar">You are viewing ${esc(st.name)} on EasyBuy.<a href="#/dashboard">Seller dashboard</a><a href="#/">EasyBuy home</a></div>
+  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart">Cart <span id="sfCount">0</span></button></div></div></header>
+  <section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(st.tagline||'')}</p>
+    <div class="sf-trust" id="sfTrust"></div></div></section>
+  <div class="wrap sf-main">
+    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products">
+    <div class="sf-tools"><div class="cat-filter" id="sfCats"></div></div><div class="grid" id="sfGrid"></div>
+  </div>
+  <footer class="sf-foot"><div class="wrap">Store powered by EasyBuy.</div></footer>
+  <div class="drawer" id="sfDrawer"><aside class="sheet" role="dialog" aria-label="Your cart">
+    <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart" aria-label="Close cart">Close</button></div>
+    <div id="sfItems"></div>
+    <div id="sfQuote"></div>
+    <form id="sfForm" style="margin-top:18px">
+      <h3 style="font-size:19px;margin-bottom:10px">Delivery details</h3>
+      <label>Full name<input id="cName" autocomplete="name" required></label>
+      <label>Phone<input id="cPhone" inputmode="tel" autocomplete="tel" placeholder="03XXXXXXXXX" required></label>
+      <p class="fine" id="cShipTo"></p>
+      <label>City<input id="cCity" autocomplete="address-level2" required></label>
+      <label>Full address<input id="cAddr" autocomplete="street-address" required></label>
+      <div id="cIntl" hidden><label>State / province<input id="cState" autocomplete="address-level1"></label><label>Postal code<input id="cPostal" autocomplete="postal-code"></label></div>
+      <label>Coupon code (optional)<input id="cCoupon" autocomplete="off" placeholder="e.g. SAVE10"></label>
+      <p class="fine" id="couponMsg"></p>
+      <label>Payment method<select id="cPay"></select></label>
+      <div id="payInfo"></div>
+      <button class="btn accent big" type="submit" id="placeBtn">Place order</button>
+      <a class="fine" href="#/track" data-track-store style="display:block;margin-top:12px">Track an existing order</a>
+    </form>
+  </aside></div>
+  <div class="modal" id="sfDone"><div class="box"><h2 id="doneTitle">Order placed</h2><p id="doneText"></p>
+    <a class="btn primary" id="doneWa" target="_blank" rel="noopener" href="#">Send order on WhatsApp</a>
+    <button class="btn" data-sf="closedone">Continue shopping</button></div></div>
+  <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div id="pmBody"></div></div></div>`;
+  syncCheckout();drawGrid();drawCart();
+}
+function drawGrid(){
+  const st=SF.store,q=SF.q.toLowerCase();
+  const cats=[...new Set(SF.products.map(p=>p.category).filter(Boolean))];
+  const cf=$('#sfCats'); if(cf)cf.innerHTML=`<button class="active" data-catfilter="">All</button>`+cats.map(c=>`<button data-catfilter="${esc(c)}">${esc(c)}</button>`).join('');
+  const activeCat=SF.cat||'';
+  if(cf)cf.querySelectorAll('[data-catfilter]').forEach(b=>b.classList.toggle('active',b.dataset.catfilter===activeCat));
+  const list=SF.products.filter(p=>(!activeCat||p.category===activeCat)&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(q));
+  $('#sfGrid').innerHTML=list.map(p=>{
+    const vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id);
+    const badge=isSold(p)?'<span class="chipbadge sold">Sold out</span>':lowStock(p)?`<span class="chipbadge low">Only ${p.stock} left</span>`:'';
+    const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>'
+      :vs.length?`<button class="btn accent" data-product="${p.id}">Choose option</button>`
+      :`<button class="btn accent" data-add="${p.id}">Add to cart</button>`;
+    return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button>
+    <div class="body">${badge}${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3>
+    ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
+    <div class="desc">${esc(p.description||'')}</div>
+    <div class="price">${priceHtml(p)}</div>${btn}</div></article>`}).join('')
+    ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
+}
+function openProduct(p){
+  const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
+  const note=isSold(p)?'<p class="stock-note out">Sold out</p>':lowStock(p)?`<p class="stock-note low">Only ${p.stock} left</p>`:'';
+  $('#pmBody').innerHTML=`
+  <div class="product-modal-inner"><div class="product-modal-pic">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:(CATS[st.category]||'🛍️')}</div>
+  <div>${p.old_price>p.price?'<span class="badge-sale">SALE</span>':''}
+    <h2 style="margin-top:10px">${esc(p.name)}</h2>
+    ${rt?`<div class="rating">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
+    <div class="price" id="pmPrice">${priceHtml(p)}</div>
+    ${vs.length?`<label style="margin-top:10px">Choose an option<select id="pmVariant"><option value="">Select...</option>${vs.map(v=>`<option value="${esc(varLabel(v))}">${esc(varLabel(v))}${v.price>0&&v.price!==p.price?' ('+money(v.price)+')':''}</option>`).join('')}</select></label>`:''}
+    ${note}
+    <p class="fine" style="font-size:15px;line-height:1.7">${esc(p.description||'No description available.')}</p>
+    <button class="btn accent big buy" id="pmAdd" data-add="${p.id}"${isSold(p)?' disabled':''}>${isSold(p)?'Sold out':'Add to cart'}</button></div></div>
+  <div class="reviews-box"><h3>Reviews</h3>
+    ${mine.length?mine.map(r=>`<div class="rv"><b>${esc(r.customer_name)}</b> <span class="rating">${stars(r.rating)}</span><p>${esc(r.body||'')}</p></div>`).join(''):'<p class="fine">No reviews yet.</p>'}
+    <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Write a review</summary>
+    <form id="rvForm" data-pid="${p.id}" style="margin-top:12px">
+      <label>Your name<input id="rvName" required maxlength="60"></label>
+      <label>Phone used on your order<input id="rvPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label>
+      <label>Rating<select id="rvRating"><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option></select></label>
+      <label>Comment (optional)<textarea id="rvBody" maxlength="500"></textarea></label>
+      <button class="btn accent" type="submit">Send review</button>
+      <p class="fine">Only customers who ordered this product can review it. The seller approves reviews before they show.</p>
+    </form></details></div>`;
+  $('#sfProduct').classList.add('open');
+}
+function drawCart(){
+  const c=validCart();
+  $('#sfCount').textContent=c.reduce((a,b)=>a+b.qty,0);
+  if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfQuote').innerHTML='';$('#sfForm').hidden=true;return}
+  $('#sfForm').hidden=false;
+  $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);
+    return `<div class="ci"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one">+</button></div></div>`}).join('');
+  refreshQuote();
+}
+let quoteT;
+function refreshQuote(){
+  clearTimeout(quoteT);
+  quoteT=setTimeout(async()=>{
+    const box=$('#sfQuote');if(!box||!SF.store)return;
+    const c=validCart();if(!c.length){box.innerHTML='';return}
+    const code=($('#cCoupon')&&$('#cCoupon').value||'').trim(),msg=$('#couponMsg');
+    const r=await sb.rpc('quote_cart',{p_store:SF.store.id,p_items:c.map(cartItem),p_coupon:code,p_country:SF.country});
+    let q;
+    if(r.error){
+      if((r.error.code==='PGRST202'||/could not find|schema cache/i.test(r.error.message||''))&&!curMarket().home){box.innerHTML='<p class="fine">International checkout is not enabled yet. Please choose the home country.</p>';SF.quote=null;return}
+      if(r.error.code==='PGRST202'||/could not find|schema cache/i.test(r.error.message||'')){
+        const sub=c.reduce((a,i)=>a+unitPrice(SF.products.find(p=>p.id===i.id),i.variant)*i.qty,0),s=SF.store;
+        const ship=s.free_shipping_min>0&&sub>=s.free_shipping_min?0:(s.shipping_fee||0);
+        q={subtotal:sub,discount:0,shipping:ship,total:sub+ship,coupon_msg:''};
+      }else{box.innerHTML='<p class="fine" style="color:var(--coral)">'+esc(r.error.message)+'</p>';SF.quote=null;if(msg)msg.textContent='';return}
+    }else q=r.data[0];
+    SF.quote=q;
+    const F=n=>fmtCur(n,q.currency||curMarket().currency);
+    box.innerHTML=`<div class="qrow"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot"><span>Total</span><span>${F(q.total)}</span></div>`;
+    if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
+  },250);
+}
+function payInfo(){
+  const st=SF.store,sel=$('#cPay'),box=$('#payInfo'),btn=$('#placeBtn');if(!sel||!box)return;
+  const m=sel.value;let t='';
+  if(m==='bank')t=st.bank_details?'Bank details:\n'+st.bank_details:'The seller will share bank details on WhatsApp.';
+  if(m==='easypaisa')t=st.easypaisa_number?'Send payment to Easypaisa: '+st.easypaisa_number:'The seller will share Easypaisa details on WhatsApp.';
+  if(m==='jazzcash')t=st.jazzcash_number?'Send payment to JazzCash: '+st.jazzcash_number:'The seller will share JazzCash details on WhatsApp.';
+  box.innerHTML=m==='cod'?'':`<div class="payinfo">${esc(t)}</div><label>Transaction ID (after you pay)<input id="cPayNote" maxlength="200" placeholder="Optional, you can also send it on WhatsApp"></label>`;
+  btn.textContent=m==='cod'?'Place order, pay on delivery':'Place order';
+}
+function syncCheckout(){
+  const st=SF.store,m=curMarket(),sel=$('#cPay');if(!sel)return;
+  const keep=sel.value,methods=Array.isArray(m.payment_methods)&&m.payment_methods.length?m.payment_methods:['cod'];
+  sel.innerHTML=methods.map(x=>`<option value="${esc(x)}">${esc(payLabel(x))}</option>`).join('');
+  sel.value=methods.includes(keep)?keep:methods[0];
+  const n=(st.markets||[]).length;
+  $('#sfTrust').innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
+  const intl=m.country!==homeCountry(st),c=countryOf(m.country);
+  $('#cIntl').hidden=!intl;$('#cPostal').required=intl;
+  $('#cShipTo').textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
+  $('#cPhone').placeholder=m.country==='PK'?'03XXXXXXXXX':((c&&c.dial)||'+')+' number';
+  payInfo();
+}
+function bindStore(){
+  const el=$('#v-store');
+  el.addEventListener('input',e=>{
+    if(e.target.id==='sfSearch'){SF.q=e.target.value;drawGrid()}
+    if(e.target.id==='cCoupon')refreshQuote();
+  });
+  el.addEventListener('change',e=>{
+    if(e.target.id==='cPay')payInfo();
+    if(e.target.id==='sfCountry'){SF.country=e.target.value;lsSet('eb.country.'+SF.store.id,SF.country);syncCheckout();drawGrid();drawCart()}
+    if(e.target.id==='pmVariant'){const p=SF.products.find(x=>x.id===$('#pmAdd').dataset.add);if(p)$('#pmPrice').innerHTML=priceHtml(p,e.target.value)}
+  });
+  el.addEventListener('click',e=>{
+    if(!SF.store)return;
+    const ad=e.target.closest('[data-add]');
+    if(ad){
+      const isModal=ad.id==='pmAdd';
+      const variant=isModal?($('#pmVariant')?$('#pmVariant').value:''):'';
+      if(addToCart(ad.dataset.add,variant)){if(isModal)$('#sfProduct').classList.remove('open');$('#sfDrawer').classList.add('open')}
+      return;
+    }
+    const ch=e.target.closest('[data-chg]');
+    if(ch){
+      let c=getCart();const v=ch.dataset.var||'',d=parseInt(ch.dataset.d,10);
+      const x=c.find(i=>i.id===ch.dataset.chg&&(i.variant||'')===v);
+      if(x){
+        const p=SF.products.find(pp=>pp.id===x.id),total=c.filter(i=>i.id===x.id).reduce((a,b)=>a+b.qty,0);
+        if(d>0&&p&&p.stock!=null&&total+1>p.stock){toast('Only '+p.stock+' available');return}
+        x.qty+=d;if(x.qty<=0)c=c.filter(i=>i!==x);
       }
-    :null;
+      setCart(c);drawCart();return;
+    }
+    const cat=e.target.closest('[data-catfilter]'); if(cat){SF.cat=cat.dataset.catfilter;drawGrid();return}
+    const pr=e.target.closest('[data-product]'); if(pr){const p=SF.products.find(x=>x.id===pr.dataset.product);if(p)openProduct(p);return}
+    const a=e.target.closest('[data-sf]');
+    if(a){const k=a.dataset.sf;
+      if(k==='opencart')$('#sfDrawer').classList.add('open');
+      if(k==='closecart')$('#sfDrawer').classList.remove('open');
+      if(k==='closedone')$('#sfDone').classList.remove('open');
+      if(k==='closeproduct')$('#sfProduct').classList.remove('open');
+      return}
+    if(e.target.id==='sfDrawer')$('#sfDrawer').classList.remove('open');
+    if(e.target.id==='sfProduct')$('#sfProduct').classList.remove('open');
+  });
+  el.addEventListener('submit',async e=>{
+    if(e.target.id==='rvForm'){
+      e.preventDefault();
+      await busy(e.submitter,async()=>{
+        ok(await sb.rpc('submit_review',{p_store:SF.store.id,p_product:e.target.dataset.pid,p_name:$('#rvName').value.trim(),p_phone:$('#rvPhone').value.trim(),p_rating:parseInt($('#rvRating').value,10),p_body:$('#rvBody').value.trim()}));
+        e.target.reset();toast('Thanks! Your review will show after the seller approves it.');
+      });
+      return;
+    }
+    if(e.target.id!=='sfForm')return;e.preventDefault();
+    const st=SF.store,c=validCart();if(!c.length)return;
+    const name=$('#cName').value.trim(),phone=$('#cPhone').value.trim(),city=$('#cCity').value.trim(),address=$('#cAddr').value.trim();
+    const mk=curMarket(),digits=phone.replace(/[\s\-()]/g,'');
+    if(mk.country==='PK'){if(!/^(92|0)?3\d{9}$/.test(phone.replace(/\D/g,''))){toast('Enter a Pakistani mobile number like 03XXXXXXXXX');return}}
+    else if(!/^\+?[0-9]{7,15}$/.test(digits)){toast('Enter your phone number with country code');return}
+    const state=$('#cState')?$('#cState').value.trim():'',postal=$('#cPostal')?$('#cPostal').value.trim():'';
+    const pay=$('#cPay').value,note=$('#cPayNote')?$('#cPayNote').value.trim():'';
+    await busy(e.submitter,async()=>{
+      const res=await sb.rpc('place_order',{p_store:st.id,p_name:name,p_phone:phone,p_city:city,p_address:address,p_items:c.map(cartItem),p_coupon:$('#cCoupon')?$('#cCoupon').value.trim():'',p_payment:pay,p_note:note,p_country:SF.country,p_state:state,p_postal:postal});
+      const row=ok(res)[0];
+      const items=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);return p.name+(i.variant?' ('+i.variant+')':'')+' x'+i.qty}).join(', ');
+      setCart([]);e.target.reset();$('#sfDrawer').classList.remove('open');
+      try{SF.products=ok(await sb.from('products').select('*').eq('store_id',st.id).eq('is_active',true).order('created_at'))}catch(err){}
+      syncCheckout();drawGrid();drawCart();
+      const cc=row.o_currency||mk.currency,F=n=>fmtCur(n,cc);
+      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}${state?', '+state:''}${postal?' '+postal:''}\nCountry: ${countryName(mk.country)}\nItems: ${items}\nDiscount: ${F(row.o_m_discount!=null?row.o_m_discount:(row.o_discount||0))}\nShipping: ${F(row.o_m_shipping!=null?row.o_m_shipping:(row.o_shipping||0))}\nTotal: ${F(row.o_charged!=null?row.o_charged:row.o_total)}\nPayment: ${payLabel(pay)}${note?' (ref '+note+')':''}`;
+      $('#doneTitle').textContent='Order #'+row.o_no+' placed';
+      $('#doneText').textContent=pay==='cod'?'Please keep '+F(row.o_charged!=null?row.o_charged:row.o_total)+' ready. You pay the rider in cash when the parcel arrives.':'Please send '+F(row.o_charged!=null?row.o_charged:row.o_total)+' with '+payLabel(pay)+' and share the transaction ID on WhatsApp. The seller confirms your order once the payment arrives. Save your order number to track it.';
+      $('#doneWa').href='https://wa.me/'+waNum(st.whatsapp)+'?text='+encodeURIComponent(msg);
+      $('#sfDone').classList.add('open');
+    });
+  });
 }
 
 
-function validCart(){
-
-  return getCart().filter(
-    i=>
-      SF.products.some(
-        p=>p.id===i.id
-      )
-  );
+/* ---------- markets (international selling) ---------- */
+function marketsCard(st){
+  const home=st.home_country||'PK',cur=st.currency||'PKR',ms=Array.isArray(st.markets)?st.markets:[];
+  const used=new Set([home,...ms.map(m=>m.country)]);
+  const opts=COUNTRIES.filter(c=>!used.has(c.code)).map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('');
+  const rows=ms.map(m=>`<tr><td>${esc(countryName(m.country))}</td><td>${esc(m.currency)}</td><td>1 ${esc(m.currency)} = ${Number((1/m.rate).toPrecision(6))} ${esc(cur)}</td><td>${fmtCur(m.shipping,m.currency)}</td><td>${m.free_min>0?fmtCur(m.free_min,m.currency):'Never'}</td><td>${(m.payment_methods||[]).map(payLabel).join(', ')}</td><td><button class="btn small danger" data-market-del="${esc(m.country)}">Remove</button></td></tr>`).join('');
+  return `<section class="advanced-card" style="margin-top:16px" id="marketsCard"><h2>International selling (Markets)</h2>
+  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to. Each market has its own currency, shipping fee and payment methods. Customers pick their country in your store and see prices in that currency.</p>
+  <form id="homeForm" class="advanced-form"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn">Save home country</button> <span class="fine">Changing the currency does not convert your existing prices.</span></div></form>
+  <div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Country</th><th>Currency</th><th>Rate</th><th>Shipping</th><th>Free above</th><th>Payments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7">No international markets yet.</td></tr>'}</tbody></table></div>
+  ${opts?`<h3 style="margin:18px 0 8px">Add a market</h3>
+  <form id="marketForm" class="advanced-form"><label>Country<select id="mkCountry">${opts}</select></label><label>Currency<input id="mkCurrency" maxlength="3" required value="${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'')}"></label>
+  <label>1 <span id="mkCurLabel">${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'unit')}</span> equals how many ${esc(cur)}?<input id="mkRate" type="number" step="any" min="0" required placeholder="Today's rate"></label>
+  <label>Shipping fee (in that currency)<input id="mkShip" type="number" step="any" min="0" value="0"></label>
+  <label>Free shipping above (0 = never)<input id="mkFree" type="number" step="any" min="0" value="0"></label>
+  <label>Payment methods<select id="mkPay" multiple><option value="bank" selected>Bank transfer</option><option value="cod">Cash on Delivery</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option></select></label>
+  <div class="full"><button class="btn primary">Add market</button></div></form>`:'<p class="fine">All supported countries are added.</p>'}
+  <p class="fine" style="margin-top:12px">Exchange rates are set by you and do not update by themselves. Check the rate before you save, and update it when it moves. Prices are rounded per item.</p></section>`;
 }
-
-
-const cartItem=i=>({
-  product_id:i.id,
-  qty:i.qty,
-  variant:i.variant||''
+async function saveStoreFields(fields,msg){
+  const st=curS();
+  const r=await sb.from('stores').update(fields).eq('id',st.id).select().single();
+  if(r.error)throw r.error;
+  MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+  await loadAdvanced();renderDash();toast(msg);
+}
+document.addEventListener('change',e=>{
+  if(e.target.id==='mkCountry'){const c=countryOf(e.target.value);if(c){$('#mkCurrency').value=c.cur;$('#mkCurLabel').textContent=c.cur}}
+  if(e.target.id==='mkCurrency'){$('#mkCurLabel').textContent=e.target.value.toUpperCase()||'unit'}
+});
+document.addEventListener('submit',async e=>{
+  if(e.target.id==='homeForm'){
+    e.preventDefault();
+    await busy(e.submitter,()=>saveStoreFields({home_country:$('#homeCountry').value,currency:$('#homeCurrency').value.trim().toUpperCase()},'Home country saved'));
+    return;
+  }
+  if(e.target.id==='marketForm'){
+    e.preventDefault();const st=curS();
+    const inv=parseFloat($('#mkRate').value);
+    if(!(inv>0)){toast('Enter the exchange rate');return}
+    const pays=[...$('#mkPay').selectedOptions].map(x=>x.value);
+    if(!pays.length){toast('Choose at least one payment method');return}
+    const m={country:$('#mkCountry').value,currency:$('#mkCurrency').value.trim().toUpperCase(),rate:Number((1/inv).toPrecision(8)),
+      shipping:Math.max(0,parseFloat($('#mkShip').value)||0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
+    await busy(e.submitter,()=>saveStoreFields({markets:[...(st.markets||[]),m]},'Market added'));
+  }
+});
+document.addEventListener('click',async e=>{
+  const d=e.target.closest('[data-market-del]');if(!d)return;
+  const st=curS();
+  if(!confirm('Remove '+countryName(d.dataset.marketDel)+' from your markets?'))return;
+  await busy(d,()=>saveStoreFields({markets:(st.markets||[]).filter(m=>m.country!==d.dataset.marketDel)},'Market removed'));
 });
 
-
-function addToCart(
-  pid,
-  variant
-){
-
-  const p=
-    SF.products.find(
-      x=>x.id===pid
-    );
-
-  if(!p)return false;
-
-  if(isSold(p)){
-
-    toast(
-      p.name+
-      ' is sold out'
-    );
-
-    return false;
+/* ---------- start ---------- */
+(async function init(){
+  initBuilder();bindDash();bindStore();
+  if(!configured)$('#setup').hidden=false;
+  else{
+    try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
+    sb.auth.onAuthStateChange((_e,s)=>{USER=s?s.user:null;paintNav()});
   }
-
-  const vs=
-    Array.isArray(p.variants)
-      ?p.variants
-      :[];
-
-  if(
-    vs.length&&
-    !variant
-  ){
-
-    toast(
-      'Please choose an option first'
-    );
-
-    return false;
-  }
-
-  const c=getCart();
-
-  const inCart=
-    c
-      .filter(
-        i=>i.id===pid
-      )
-      .reduce(
-        (a,b)=>a+b.qty,
-        0
-      );
-
-  if(
-    p.stock!=null&&
-    inCart+1>p.stock
-  ){
-
-    toast(
-      'Only '+
-      p.stock+
-      ' available'
-    );
-
-    return false;
-  }
-
-  const x=
-    c.find(
-      i=>
-        i.id===pid&&
-        (i.variant||'')===
-        (variant||'')
-    );
-
-  if(x){
-
-    x.qty=
-      Math.min(
-        99,
-        x.qty+1
-      );
-
-  }else{
-
-    c.push({
-      id:pid,
-      qty:1,
-      variant:variant||''
-    });
-  }
-
-  setCart(c);
-
-  drawCart();
-
-  return true;
+  paintNav();route();
+})();
+/* ---------- Stage 4/5 advanced layer ---------- */
+const ADV={extra:{customers:[],coupons:[],reviews:[],profile:null}};
+async function loadAdvanced(){
+  if(!sb||!USER||!MY.active)return;
+  const [cu,co,re,pr]=await Promise.all([
+    sb.from('customers').select('*').eq('store_id',MY.active).order('updated_at',{ascending:false}).limit(200),
+    sb.from('coupons').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}),
+    sb.from('reviews').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}).limit(200),
+    sb.from('profiles').select('*').eq('id',USER.id).maybeSingle()
+  ]);
+  ADV.extra.customers=cu.error?[]:cu.data||[]; ADV.extra.coupons=co.error?[]:co.data||[]; ADV.extra.reviews=re.error?[]:re.data||[]; ADV.extra.profile=pr.error?null:pr.data;
 }
-
-
-/* ---------- storefront rendering ---------- */
-
-async function renderStore(slug){
-
-  const el=$('#v-store');
-
-  el.innerHTML=`
-    <div
-      class="wrap empty"
-      style="padding-top:80px"
-    >
-      Loading store...
-    </div>
-  `;
-
-  let st=null;
-  let prods=[];
-  let revs=[];
-
-  try{
-
-    if(!sb){
-
-      throw new Error(
-        'Supabase keys are missing in config.js'
-      );
-    }
-
-    st=ok(
-      await sb
-        .from('stores')
-        .select('*')
-        .eq(
-          'slug',
-          slug||''
-        )
-        .maybeSingle()
-    );
-
-    if(st){
-
-      prods=ok(
-        await sb
-          .from('products')
-          .select('*')
-          .eq(
-            'store_id',
-            st.id
-          )
-          .eq(
-            'is_active',
-            true
-          )
-          .order(
-            'created_at'
-          )
-      );
-
-      const rr=
-        await sb.rpc(
-          'get_reviews',
-          {
-            p_store:st.id
-          }
-        );
-
-      revs=
-        rr.error
-          ?[]
-          :(rr.data||[]);
-    }
-
-  }catch(e){
-
-    el.innerHTML=`
-      <div
-        class="wrap empty"
-        style="padding-top:80px"
-      >
-
-        <h2>
-          Could not load this store
-        </h2>
-
-        <p>
-          ${esc(e.message)}
-        </p>
-
-        <a
-          class="btn primary"
-          href="#/"
-        >
-          Back to EasyBuy
-        </a>
-
-      </div>
-    `;
-
-    return;
+function advNav(){
+  const side=$('.side-nav'); if(!side)return;
+  if(!side.querySelector('[data-tab="advanced"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='advanced'?'active':'')+'" data-tab="advanced">📊 Analytics & tools</button>');
+  if(ADV.extra.profile?.role==='admin'&&!side.querySelector('[data-tab="admin"]')) side.insertAdjacentHTML('beforeend','<button class="'+(D.tab==='admin'?'active':'')+'" data-tab="admin">🛡️ Platform admin</button>');
+}
+function advMetrics(st){
+  const orders=MY.orders.filter(o=>o.status!=='Cancelled'), revenue=orders.reduce((a,o)=>a+o.total,0), avg=orders.length?Math.round(revenue/orders.length):0;
+  const delivered=MY.orders.filter(o=>o.status==='Delivered').length, low=MY.products.filter(p=>p.stock!=null&&p.stock<=5).length;
+  const byCity={}; orders.forEach(o=>byCity[o.city]=(byCity[o.city]||0)+o.total);
+  const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,6), max=topCities[0]?.[1]||1;
+  return `<div class="metric-grid"><div class="metric"><b>${money(revenue)}</b><span>Gross revenue</span></div><div class="metric"><b>${orders.length}</b><span>Active orders</span></div><div class="metric"><b>${money(avg)}</b><span>Average order</span></div><div class="metric"><b>${low}</b><span>Low-stock products</span></div></div>
+  <div class="advanced-grid"><section class="advanced-card"><h2>Sales by city</h2><p class="fine">Based on orders in this store.</p>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}%"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
+  <section class="advanced-card"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row"><span>${x}</span><div class="bar"><i style="width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
+}
+function advancedPanel(st){
+  const coupons=ADV.extra.coupons||[], customers=ADV.extra.customers||[], reviews=ADV.extra.reviews||[];
+  const prodRows=MY.products.map(p=>`<tr><td>${esc(p.name)}</td><td><input class="stock-input" data-stock="${p.id}" type="number" min="0" value="${p.stock==null?'':p.stock}" placeholder="Not tracked" style="max-width:130px"></td><td>${p.sku?esc(p.sku):'—'}</td><td>${p.is_active?'Visible':'Hidden'}</td></tr>`).join('');
+  const couponRows=coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td>${c.active?'Active':'Off'}</td><td><button class="btn small danger" data-coupon-del="${c.id}">Delete</button></td></tr>`).join('');
+  const customerRows=customers.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('');
+  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
+  return `${advMetrics(st)}
+  <div class="advanced-grid" style="margin-top:16px">
+    <section class="advanced-card"><h2>Inventory</h2><p class="fine">Leave a box empty for products you do not track. 0 means sold out. Save quantities per product.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
+    <section class="advanced-card"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed (${esc((curS()&&curS().currency)||'PKR')})</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card"><h2>Customers</h2><p class="fine">Returning buyers and their order value.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card"><h2>Reviews</h2><p class="fine">Approve reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
+  </div>
+  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee (${esc(st.currency||'PKR')})<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (${esc(st.currency||'PKR')})<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Theme<select id="storeTheme"><option value="classic" ${st.theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${st.theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${st.theme==='bold'?'selected':''}>Bold</option></select></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
+}
+async function adminPanel(){
+  const all=await Promise.all([
+    sb.from('stores').select('id,name,slug,owner_id,created_at,published').order('created_at',{ascending:false}).limit(500),
+    sb.from('orders').select('id,store_id,total,status,created_at').order('created_at',{ascending:false}).limit(1000),
+    sb.from('products').select('id,store_id,is_active,stock').limit(2000),
+    sb.from('profiles').select('id,full_name,phone,role,created_at').order('created_at',{ascending:false}).limit(500)
+  ]);
+  const stores=all[0].error?[]:all[0].data||[], orders=all[1].error?[]:all[1].data||[], products=all[2].error?[]:all[2].data||[], profiles=all[3].error?[]:all[3].data||[];
+  const rev=orders.filter(o=>o.status!=='Cancelled').reduce((a,o)=>a+o.total,0);
+  return `<div class="admin-banner"><b>Platform admin.</b> This area is for EasyBuy operators. Seller dashboards remain isolated by store ownership.</div><div class="metric-grid"><div class="metric"><b>${stores.length}</b><span>Stores</span></div><div class="metric"><b>${profiles.length}</b><span>Users</span></div><div class="metric"><b>${products.length}</b><span>Products</span></div><div class="metric"><b>${money(rev)}</b><span>Order value</span></div></div><div class="advanced-grid"><section class="advanced-card"><h2>Stores</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Store</th><th>Slug</th><th>Published</th></tr></thead><tbody>${stores.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.slug)}</td><td><button class="btn small" data-publish="${s.id}" data-value="${s.published?'false':'true'}">${s.published?'Unpublish':'Publish'}</button></td></tr>`).join('')}</tbody></table></div></section><section class="advanced-card"><h2>Users</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>ID</th><th>Role</th><th>Name</th></tr></thead><tbody>${profiles.map(p=>`<tr><td>${esc(p.id.slice(0,8))}…</td><td><span class="pill">${esc(p.role)}</span></td><td>${esc(p.full_name||'—')}</td></tr>`).join('')}</tbody></table></div></section></div>`;
+}
+const _renderDash=renderDash;
+renderDash=async function(){
+  await _renderDash();
+  await loadAdvanced();
+  advNav();
+  if(D.tab==='advanced'&&curS()){
+    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="mobile-dash-nav"><button class="btn small" data-tab="orders">Orders</button><button class="btn small" data-tab="products">Products</button><button class="btn small" data-tab="advanced">Analytics & tools</button><button class="btn small" data-tab="settings">Settings</button></div><div class="dash-top"><div><h1>Analytics & tools</h1><p>Inventory, customers, coupons, reviews and commerce settings.</p></div><a class="btn" href="#/s/${esc(curS().slug)}">View store</a></div>${advancedPanel(curS())}`;
   }
-
-  if(!st){
-
-    el.innerHTML=`
-      <div
-        class="wrap empty"
-        style="padding-top:80px"
-      >
-
-        <h2>
-          Store not found
-        </h2>
-
-        <p>
-          Check the link, or ask the seller to send it again.
-        </p>
-
-        <a
-          class="btn primary"
-          href="#/"
-        >
-          Back to EasyBuy
-        </a>
-
-      </div>
-    `;
-
-    return;
+  if(D.tab==='admin'&&ADV.extra.profile?.role==='admin'){
+    const main=$('.dash-main'); if(main) main.innerHTML=`<div class="dash-top"><div><h1>Platform admin</h1><p>Manage EasyBuy at platform level.</p></div></div>${await adminPanel()}`;
   }
-
-  SF={
-    store:st,
-    products:prods,
-    reviews:revs,
-    q:'',
-    cat:'',
-    quote:null,
-    country:''
-  };
-
-  {
-    const saved=
-      lsGet(
-        'eb.country.'+
-        st.id
-      );
-
-    const ml=
-      marketList(st);
-
-    SF.country=
-      ml.some(
-        m=>m.country===saved
-      )
-      ?saved
-      :homeCountry(st);
-  }
-
-  const methods=
-    Array.isArray(
-      st.payment_methods
-    )&&
-    st.payment_methods.length
-      ?st.payment_methods
-      :['cod'];
-
-  document.title=
-    st.name+
-    ' on EasyBuy';
-
-  el.style.setProperty(
-    '--accent',
-    st.color
-  );
-
-  el.style.setProperty(
-    '--on-accent',
-    ink(st.color)
-  );
-
-  el.innerHTML=`
-
-    <div class="eb-bar">
-
-      You are viewing
-      ${esc(st.name)}
-      on EasyBuy.
-
-      <a href="#/dashboard">
-        Seller dashboard
-      </a>
-
-      <a href="#/">
-        EasyBuy home
-      </a>
-
-    </div>
-
-    <header class="sf-head">
-
-      <div class="wrap sf-nav">
-
-        <strong class="sf-logo">
-          ${esc(st.name)}
-        </strong>
-
-        <div class="sf-right">
-
-          ${
-            (st.markets||[]).length
-            ?`
-              <select
-                id="sfCountry"
-                aria-label="Ship to country"
-              >
-
-                ${
-                  marketList(st)
-                    .map(m=>`
-
-                      <option
-                        value="${esc(m.country)}"
-                        ${
-                          m.country===SF.country
-                          ?'selected'
-                          :''
-                        }
-                      >
-                        ${esc(
-                          countryName(
-                            m.country
-                          )
-                        )}
-                        (${esc(m.currency)})
-                      </option>
-
-                    `)
-                    .join('')
-                }
-
-              </select>
-            `
-            :''
-          }
-
-          <button
-            class="btn accent"
-            data-sf="opencart"
-          >
-            Cart
-            <span id="sfCount">
-              0
-            </span>
-          </button>
-
-        </div>
-
-      </div>
-
-    </header>
-
-    <section class="sf-hero">
-
-      <div class="wrap">
-
-        <h1>
-          ${esc(st.name)}
-        </h1>
-
-        <p>
-          ${esc(st.tagline||'')}
-        </p>
-
-        <div
-          class="sf-trust"
-          id="sfTrust"
-        ></div>
-
-      </div>
-
-    </section>
-
-    <div class="wrap sf-main">
-
-      <input
-        class="search"
-        id="sfSearch"
-        type="search"
-        placeholder="Search products"
-        aria-label="Search products"
-      >
-
-      <div class="sf-tools">
-
-        <div
-          class="cat-filter"
-          id="sfCats"
-        ></div>
-
-      </div>
-
-      <div
-        class="grid"
-        id="sfGrid"
-      ></div>
-
-    </div>
-
-    <footer class="sf-foot">
-
-      <div class="wrap">
-        Store powered by EasyBuy.
-      </div>
-
-    </footer>
-
-    <div
-      class="drawer"
-      id="sfDrawer"
-    >
-
-      <aside
-        class="sheet"
-        role="dialog"
-        aria-label="Your cart"
-      >
-
-        <div class="sheet-head">
-
-          <h2>
-            Your cart
-          </h2>
-
-          <button
-            class="btn small"
-            data-sf="closecart"
-            aria-label="Close cart"
-          >
-            Close
-          </button>
-
-        </div>
-
-        <div id="sfItems"></div>
-
-        <div id="sfQuote"></div>
-
-        <form
-          id="sfForm"
-          style="margin-top:18px"
-        >
-
-          <h3
-            style="font-size:19px;margin-bottom:10px"
-          >
-            Delivery details
-          </h3>
-
-          <label>
-            Full name
-            <input
-              id="cName"
-              autocomplete="name"
-              required
-            >
-          </label>
-
-          <label>
-            Phone
-            <input
-              id="cPhone"
-              inputmode="tel"
-              autocomplete="tel"
-              placeholder="03XXXXXXXXX"
-              required
-            >
-          </label>
-
-          <p
-            class="fine"
-            id="cShipTo"
-          ></p>
-
-          <label>
-            City
-            <input
-              id="cCity"
-              autocomplete="address-level2"
-              required
-            >
-          </label>
-
-          <label>
-            Full address
-            <input
-              id="cAddr"
-              autocomplete="street-address"
-              required
-            >
-          </label>
-
-          <div id="cIntl" hidden>
-
-            <label>
-              State / province
-              <input
-                id="cState"
-                autocomplete="address-level1"
-              >
-            </label>
-
-            <label>
-              Postal code
-              <input
-                id="cPostal"
-                autocomplete="postal-code"
-              >
-            </label>
-
-          </div>
-
-          <label>
-            Coupon code (optional)
-
-            <input
-              id="cCoupon"
-              autocomplete="off"
-              placeholder="e.g. SAVE10"
-            >
-
-          </label>
-
-          <p
-            class="fine"
-            id="couponMsg"
-          ></p>
-
-          <label>
-            Payment method
-
-            <select id="cPay"></select>
-
-          </label>
-
-          <div id="payInfo"></div>
-
-          <button
-            class="btn accent big"
-            type="submit"
-            id="placeBtn"
-          >
-            Place order
-          </button>
-
-          <a
-            class="fine"
-            href="#/track"
-            data-track-store
-            style="display:block;margin-top:12px"
-          >
-            Track an existing order
-          </a>
-
-        </form>
-
-      </aside>
-
-    </div>
-
-    <div
-      class="modal"
-      id="sfDone"
-    >
-
-      <div class="box">
-
-        <h2 id="doneTitle">
-          Order placed
-        </h2>
-
-        <p id="doneText"></p>
-
-        <a
-          class="btn primary"
-          id="doneWa"
-          target="_blank"
-          rel="noopener"
-          href="#"
-        >
-          Send order on WhatsApp
-        </a>
-
-        <button
-          class="btn"
-          data-sf="closedone"
-        >
-          Continue shopping
-        </button>
-
-      </div>
-
-    </div>
-
-    <div
-      class="modal product-modal"
-      id="sfProduct"
-    >
-
-      <div class="box">
-
-        <div class="sheet-head">
-
-          <h2>
-            Product
-          </h2>
-
-          <button
-            class="btn small"
-            data-sf="closeproduct"
-          >
-            Close
-          </button>
-
-        </div>
-
-        <div id="pmBody"></div>
-
-      </div>
-
-    </div>
-  `;
-
-  syncCheckout();
-
-  drawGrid();
-
-  drawCart();
-}
-/* ---------- storefront products ---------- */
-
-function drawGrid(){
-
-  const grid=$('#sfGrid');
-
-  if(!grid)return;
-
-  const q=(SF.q||'').toLowerCase().trim();
-  const cat=SF.cat||'';
-
-  const products=
-    SF.products.filter(p=>{
-
-      const text=[
-        p.name,
-        p.description,
-        p.category,
-        p.sku
-      ]
-      .join(' ')
-      .toLowerCase();
-
-      const matchesQ=
-        !q||
-        text.includes(q);
-
-      const matchesCat=
-        !cat||
-        p.category===cat;
-
-      return matchesQ&&matchesCat;
-    });
-
-  drawCategories();
-
-  if(!products.length){
-
-    grid.innerHTML=`
-      <div class="empty">
-        <h3>No products found</h3>
-        <p>
-          Try another search or category.
-        </p>
-      </div>
-    `;
-
-    return;
-  }
-
-  grid.innerHTML=
-    products
-      .map(productCard)
-      .join('');
-}
-
-
-function drawCategories(){
-
-  const box=$('#sfCats');
-
-  if(!box)return;
-
-  const cats=[
-    ...new Set(
-      SF.products
-        .map(p=>p.category)
-        .filter(Boolean)
-    )
-  ];
-
-  box.innerHTML=`
-
-    <button
-      type="button"
-      class="chip ${!SF.cat?'on':''}"
-      data-scat=""
-    >
-      All
-    </button>
-
-    ${cats.map(c=>`
-
-      <button
-        type="button"
-        class="chip ${SF.cat===c?'on':''}"
-        data-scat="${esc(c)}"
-      >
-        ${esc(c)}
-      </button>
-
-    `).join('')}
-
-  `;
-}
-
-
-function productCard(p){
-
-  const rating=ratingOf(p.id);
-
-  const variants=
-    Array.isArray(p.variants)
-      ?p.variants
-      :[];
-
-  const sold=isSold(p);
-
-  const stockText=
-    sold
-      ?'Sold out'
-      :lowStock(p)
-      ?`Only ${p.stock} left`
-      :'In stock';
-
-  return `
-
-    <article
-      class="product-card"
-      data-product="${p.id}"
-    >
-
-      <button
-        type="button"
-        class="product-media"
-        data-sf-product="${p.id}"
-        aria-label="View ${esc(p.name)}"
-      >
-
-        ${
-          p.image_url
-          ?`
-            <img
-              src="${esc(p.image_url)}"
-              alt="${esc(p.name)}"
-              loading="lazy"
-            >
-          `
-          :`
-            <span>
-              ${CATS[p.category]||'🛍️'}
-            </span>
-          `
-        }
-
-        ${
-          sold
-          ?`
-            <span class="product-badge">
-              Sold out
-            </span>
-          `
-          :''
-        }
-
-      </button>
-
-      <div class="product-body">
-
-        <p class="fine">
-          ${esc(p.category||'')}
-        </p>
-
-        <h3>
-          ${esc(p.name)}
-        </h3>
-
-        ${
-          p.description
-          ?`
-            <p class="product-desc">
-              ${esc(
-                String(p.description)
-                  .slice(0,110)
-              )}
-              ${
-                String(p.description).length>110
-                  ?'…'
-                  :''
-              }
-            </p>
-          `
-          :''
-        }
-
-        <div class="product-price">
-
-          <strong>
-            ${priceHtml(p)}
-          </strong>
-
-        </div>
-
-        ${
-          rating
-          ?`
-            <div class="rating">
-              <span>
-                ${stars(rating.avg)}
-              </span>
-              <small>
-                ${rating.avg.toFixed(1)}
-                (${rating.n})
-              </small>
-            </div>
-          `
-          :''
-        }
-
-        <small
-          class="stock-text ${
-            sold
-              ?'sold'
-              :lowStock(p)
-              ?'low'
-              :''
-          }"
-        >
-          ${stockText}
-        </small>
-
-        ${
-          variants.length
-          ?`
-            <select
-              class="variant-select"
-              data-variant-for="${p.id}"
-              aria-label="Choose option"
-            >
-
-              <option value="">
-                Choose option
-              </option>
-
-              ${variants.map(v=>`
-
-                <option
-                  value="${esc(varLabel(v))}"
-                >
-                  ${esc(varLabel(v))}
-                  ${
-                    v.price
-                    ?' — '+mp(v.price)
-                    :''
-                  }
-                </option>
-
-              `).join('')}
-
-            </select>
-          `
-          :''
-        }
-
-        <button
-          type="button"
-          class="btn accent full"
-          data-add="${p.id}"
-          ${sold?'disabled':''}
-        >
-          ${sold?'Sold out':'Add to cart'}
-        </button>
-
-      </div>
-
-    </article>
-  `;
-}
-
-
-/* ---------- product modal ---------- */
-
-function openProduct(pid){
-
-  const p=
-    SF.products.find(
-      x=>x.id===pid
-    );
-
-  if(!p)return;
-
-  const modal=$('#sfProduct');
-  const body=$('#pmBody');
-
-  if(!modal||!body)return;
-
-  const rating=ratingOf(p.id);
-
-  const reviews=
-    SF.reviews.filter(
-      r=>r.product_id===p.id
-    );
-
-  const variants=
-    Array.isArray(p.variants)
-      ?p.variants
-      :[];
-
-  body.innerHTML=`
-
-    <div class="pm-grid">
-
-      <div class="pm-image">
-
-        ${
-          p.image_url
-          ?`
-            <img
-              src="${esc(p.image_url)}"
-              alt="${esc(p.name)}"
-            >
-          `
-          :`
-            <span>
-              ${CATS[p.category]||'🛍️'}
-            </span>
-          `
-        }
-
-      </div>
-
-      <div class="pm-info">
-
-        <p class="fine">
-          ${esc(p.category||'')}
-        </p>
-
-        <h2>
-          ${esc(p.name)}
-        </h2>
-
-        ${
-          rating
-          ?`
-            <div class="rating">
-              ${stars(rating.avg)}
-              <small>
-                ${rating.avg.toFixed(1)}
-                · ${rating.n} review${
-                  rating.n===1?'':'s'
-                }
-              </small>
-            </div>
-          `
-          :''
-        }
-
-        <div class="pm-price">
-          ${priceHtml(p)}
-        </div>
-
-        ${
-          p.description
-          ?`
-            <div class="pm-description">
-              ${esc(p.description)}
-            </div>
-          `
-          :''
-        }
-
-        ${
-          variants.length
-          ?`
-            <label>
-              Choose option
-
-              <select
-                id="pmVariant"
-              >
-
-                <option value="">
-                  Select an option
-                </option>
-
-                ${variants.map(v=>`
-
-                  <option
-                    value="${esc(varLabel(v))}"
-                  >
-                    ${esc(varLabel(v))}
-                    ${
-                      v.price
-                      ?' — '+mp(v.price)
-                      :''
-                    }
-                  </option>
-
-                `).join('')}
-
-              </select>
-
-            </label>
-          `
-          :''
-        }
-
-        <button
-          type="button"
-          class="btn accent big full"
-          data-pm-add="${p.id}"
-          ${isSold(p)?'disabled':''}
-        >
-          ${
-            isSold(p)
-              ?'Sold out'
-              :'Add to cart'
-          }
-        </button>
-
-        ${
-          p.sku
-          ?`
-            <p class="fine">
-              SKU: ${esc(p.sku)}
-            </p>
-          `
-          :''
-        }
-
-      </div>
-
-    </div>
-
-    <section class="pm-reviews">
-
-      <div class="section-head">
-
-        <div>
-          <h3>
-            Customer reviews
-          </h3>
-
-          <p class="fine">
-            ${
-              rating
-              ?`${rating.n} review${rating.n===1?'':'s'}`
-              :'No reviews yet'
-            }
-          </p>
-        </div>
-
-      </div>
-
-      ${
-        reviews.length
-        ?reviews.map(r=>`
-
-          <article class="review">
-
-            <div class="review-top">
-
-              <strong>
-                ${esc(
-                  r.customer_name||
-                  r.name||
-                  'Customer'
-                )}
-              </strong>
-
-              <span>
-                ${stars(
-                  Number(r.rating)||0
-                )}
-              </span>
-
-            </div>
-
-            <p>
-              ${esc(
-                r.comment||
-                r.review||
-                ''
-              )}
-            </p>
-
-            <small>
-              ${formatDate(r.created_at)}
-            </small>
-
-          </article>
-
-        `).join('')
-        :`
-          <div class="empty small-empty">
-            <p>
-              Be the first customer to leave a review.
-            </p>
-          </div>
-        `
-      }
-
-    </section>
-  `;
-
-  modal.classList.add('show');
-  modal.hidden=false;
-}
-
-
-function closeProduct(){
-
-  const modal=$('#sfProduct');
-
-  if(!modal)return;
-
-  modal.classList.remove('show');
-  modal.hidden=true;
-}
-
-
-/* ---------- cart ---------- */
-
-function drawCart(){
-
-  const items=$('#sfItems');
-  const count=$('#sfCount');
-
-  if(!items)return;
-
-  const cart=
-    validCart();
-
-  const totalQty=
-    cart.reduce(
-      (a,b)=>a+Number(b.qty||0),
-      0
-    );
-
-  if(count){
-    count.textContent=
-      totalQty;
-  }
-
-  if(!cart.length){
-
-    items.innerHTML=`
-      <div class="empty small-empty">
-
-        <h3>
-          Your cart is empty
-        </h3>
-
-        <p>
-          Add a product to get started.
-        </p>
-
-      </div>
-    `;
-
-    drawQuote();
-
-    return;
-  }
-
-  items.innerHTML=
-    cart.map((item,index)=>{
-
-      const p=
-        SF.products.find(
-          x=>x.id===item.id
-        );
-
-      if(!p)return '';
-
-      const price=
-        unitPrice(
-          p,
-          item.variant
-        );
-
-      return `
-
-        <article class="cart-item">
-
-          <div class="cart-thumb">
-
-            ${
-              p.image_url
-              ?`
-                <img
-                  src="${esc(p.image_url)}"
-                  alt=""
-                >
-              `
-              :CATS[p.category]||'🛍️'
-            }
-
-          </div>
-
-          <div class="cart-info">
-
-            <strong>
-              ${esc(p.name)}
-            </strong>
-
-            ${
-              item.variant
-              ?`
-                <small>
-                  ${esc(item.variant)}
-                </small>
-              `
-              :''
-            }
-
-            <span>
-              ${mp(price)}
-            </span>
-
-            <div class="qty">
-
-              <button
-                type="button"
-                data-cart-dec="${index}"
-                aria-label="Decrease quantity"
-              >
-                −
-              </button>
-
-              <b>
-                ${item.qty}
-              </b>
-
-              <button
-                type="button"
-                data-cart-inc="${index}"
-                aria-label="Increase quantity"
-              >
-                +
-              </button>
-
-            </div>
-
-          </div>
-
-          <button
-            type="button"
-            class="remove"
-            data-cart-remove="${index}"
-            aria-label="Remove item"
-          >
-            ×
-          </button>
-
-        </article>
-      `;
-
-    }).join('');
-
-  drawQuote();
-}
-
-
-function cartSubtotal(){
-
-  return validCart()
-    .reduce(
-      (sum,item)=>{
-
-        const p=
-          SF.products.find(
-            x=>x.id===item.id
-          );
-
-        if(!p)return sum;
-
-        return sum+
-          unitPrice(
-            p,
-            item.variant
-          )*
-          Number(item.qty||0);
-
-      },
-      0
-    );
-}
-
-
-function cartQty(){
-
-  return validCart()
-    .reduce(
-      (a,b)=>a+Number(b.qty||0),
-      0
-    );
-}
-
-
-function drawQuote(){
-
-  const box=$('#sfQuote');
-
-  if(!box)return;
-
-  const sub=
-    cartSubtotal();
-
-  const qty=
-    cartQty();
-
-  const m=
-    curMarket();
-
-  const freeMin=
-    Number(
-      m.free_min||0
-    );
-
-  const shipping=
-    freeMin>0&&sub>=freeMin
-      ?0
-      :Number(m.shipping||0);
-
-  const total=
-    sub+shipping;
-
-  box.innerHTML=`
-
-    <div class="quote">
-
-      <div>
-        <span>Items</span>
-        <strong>${qty}</strong>
-      </div>
-
-      <div>
-        <span>Subtotal</span>
-        <strong>${mp(sub)}</strong>
-      </div>
-
-      <div>
-
-        <span>
-          Shipping
-          ${
-            freeMin>0
-            ?`
-              <small>
-                ${
-                  sub<freeMin
-                  ?`Free over ${mp(freeMin)}`
-                  :'Free'
-                }
-              </small>
-            `
-            :''
-          }
-        </span>
-
-        <strong>
-          ${
-            shipping
-              ?mp(shipping)
-              :'Free'
-          }
-        </strong>
-
-      </div>
-
-      <div class="total">
-
-        <span>
-          Total
-        </span>
-
-        <strong>
-          ${mp(total)}
-        </strong>
-
-      </div>
-
-    </div>
-  `;
-}
-
-
-/* ---------- checkout ---------- */
-
-function syncCheckout(){
-
-  const m=
-    curMarket();
-
-  const ship=$('#cShipTo');
-  const intl=$('#cIntl');
-  const pay=$('#cPay');
-
-  if(ship){
-
-    ship.textContent=
-      'Shipping to '+
-      countryName(m.country)+
-      ' · '+
-      m.currency;
-  }
-
-  if(intl){
-
-    intl.hidden=
-      m.country==='PK';
-  }
-
-  if(pay){
-
-    const methods=
-      Array.isArray(
-        m.payment_methods
-      )&&
-      m.payment_methods.length
-        ?m.payment_methods
-        :['cod'];
-
-    pay.innerHTML=
-      methods
-        .map(x=>`
-
-          <option value="${esc(x)}">
-            ${esc(payLabel(x))}
-          </option>
-
-        `)
-        .join('');
-
-    drawPaymentInfo();
-  }
-
-  drawQuote();
-}
-
-
-function drawPaymentInfo(){
-
-  const box=$('#payInfo');
-  const pay=$('#cPay');
-
-  if(!box||!pay)return;
-
-  const method=
-    pay.value;
-
-  const st=
-    SF.store;
-
-  let html='';
-
-  if(method==='cod'){
-
-    html=`
-      <div class="payment-note">
-        Pay in cash when your order arrives.
-      </div>
-    `;
-
-  }else if(
-    method==='easypaisa'||
-    method==='jazzcash'
-  ){
-
-    const number=
-      st[method+'_number']||
-      st.payment_number||
-      st.whatsapp||
-      '';
-
-    html=`
-      <div class="payment-note">
-
-        <strong>
-          ${esc(payLabel(method))}
-        </strong>
-
-        ${
-          number
-          ?`
-            <span>
-              Account:
-              ${esc(number)}
-            </span>
-          `
-          :`
-            <span>
-              Seller will contact you for payment details.
-            </span>
-          `
-        }
-
-      </div>
-    `;
-
-  }else if(method==='bank'){
-
-    html=`
-      <div class="payment-note">
-
-        <strong>
-          Bank transfer
-        </strong>
-
-        ${
-          st.bank_name||
-          st.bank_account||
-          st.bank_iban
-          ?`
-            ${
-              st.bank_name
-              ?`<span>Bank: ${esc(st.bank_name)}</span>`
-              :''
-            }
-
-            ${
-              st.bank_account
-              ?`<span>Account: ${esc(st.bank_account)}</span>`
-              :''
-            }
-
-            ${
-              st.bank_iban
-              ?`<span>IBAN: ${esc(st.bank_iban)}</span>`
-              :''
-            }
-          `
-          :`
-            <span>
-              Seller will contact you with bank details.
-            </span>
-          `
-        }
-
-      </div>
-    `;
-
-  }else{
-
-    html=`
-      <div class="payment-note">
-        ${esc(payLabel(method))}
-      </div>
-    `;
-  }
-
-  box.innerHTML=html;
-}
-
-
-async function placeOrder(e){
-
-  e.preventDefault();
-
-  const cart=
-    validCart();
-
-  if(!cart.length){
-
-    toast(
-      'Your cart is empty'
-    );
-
-    return;
-  }
-
-  const name=
-    $('#cName').value.trim();
-
-  const phone=
-    $('#cPhone').value.trim();
-
-  const city=
-    $('#cCity').value.trim();
-
-  const address=
-    $('#cAddr').value.trim();
-
-  const state=
-    $('#cState')?.value.trim()||'';
-
-  const postal=
-    $('#cPostal')?.value.trim()||'';
-
-  const payment=
-    $('#cPay').value;
-
-  if(
-    !name||
-    !phone||
-    !city||
-    !address
-  ){
-
-    toast(
-      'Please complete your delivery details.'
-    );
-
-    return;
-  }
-
-  const m=
-    curMarket();
-
-  const sub=
-    cartSubtotal();
-
-  const shipping=
-    Number(
-      m.free_min||0
-    )>0&&
-    sub>=Number(m.free_min)
-      ?0
-      :Number(m.shipping||0);
-
-  const total=
-    sub+shipping;
-
-  const items=
-    cart.map(item=>{
-
-      const p=
-        SF.products.find(
-          x=>x.id===item.id
-        );
-
-      return {
-        product_id:item.id,
-        name:p?.name||'Product',
-        qty:Number(item.qty||1),
-        variant:item.variant||'',
-        price:unitPrice(
-          p,
-          item.variant
-        )
-      };
-    });
-
-  const row={
-
-    store_id:SF.store.id,
-
-    customer_name:name,
-
-    customer_phone:phone,
-
-    city,
-
-    address,
-
-    state,
-
-    postal_code:postal,
-
-    payment_method:payment,
-
-    currency:m.currency,
-
-    subtotal:sub,
-
-    shipping,
-
-    total,
-
-    items,
-
-    status:'New'
-  };
-
-  const btn=
-    $('#placeBtn');
-
-  await busy(
-    btn,
-    async()=>{
-
-      const r=
-        await sb
-          .from('orders')
-          .insert(row)
-          .select()
-          .single();
-
-      if(r.error){
-        throw r.error;
-      }
-
-      const order=r.data;
-
-      setCart([]);
-
-      $('#sfForm').reset();
-
-      syncCheckout();
-
-      drawCart();
-
-      showOrderDone(
-        order,
-        name,
-        phone,
-        address,
-        city,
-        items,
-        total,
-        payment
-      );
-    }
-  );
-}
-
-
-function showOrderDone(
-  order,
-  name,
-  phone,
-  address,
-  city,
-  items,
-  total,
-  payment
-){
-
-  const modal=
-    $('#sfDone');
-
-  if(!modal)return;
-
-  const id=
-    order?.id||
-    order?.order_id||
-    uid();
-
-  const shortId=
-    String(id).slice(0,8).toUpperCase();
-
-  $('#doneTitle').textContent=
-    'Order placed successfully';
-
-  $('#doneText').innerHTML=`
-    Thank you,
-    <strong>${esc(name)}</strong>.<br>
-    Your order number is
-    <strong>#${esc(shortId)}</strong>.<br>
-    Total:
-    <strong>${mp(total)}</strong>
-  `;
-
-  const wa=
-    waNum(
-      SF.store.whatsapp
-    );
-
-  const lines=[
-    `New order #${shortId}`,
-    `Store: ${SF.store.name}`,
-    `Customer: ${name}`,
-    `Phone: ${phone}`,
-    `City: ${city}`,
-    `Address: ${address}`,
-    `Payment: ${payLabel(payment)}`,
-    `Total: ${mp(total)}`,
-    '',
-    'Items:',
-    ...items.map(
-      x=>
-        `${x.name} x${x.qty}`+
-        (
-          x.variant
-          ?` (${x.variant})`
-          :''
-        )
-    )
-  ];
-
-  const href=
-    wa
-    ?`https://wa.me/${wa}?text=${
-      encodeURIComponent(
-        lines.join('\n')
-      )
-    }`
-    :'#';
-
-  const waBtn=
-    $('#doneWa');
-
-  if(waBtn){
-
-    waBtn.href=href;
-
-    waBtn.hidden=!wa;
-  }
-
-  modal.hidden=false;
-  modal.classList.add('show');
-}
-
-
-/* ---------- track order ---------- */
-
+};
+// Advanced interactions
+addEventListener('click',async e=>{
+  const stock=e.target.closest('#saveInventory');
+  if(stock){await busy(stock,async()=>{for(const i of $$('.stock-input')){const p=MY.products.find(x=>x.id===i.dataset.stock);if(p){const n=i.value.trim()===''?null:Math.max(0,parseInt(i.value,10)||0);await sb.from('products').update({stock:n}).eq('id',p.id)}}await loadStoreData();await loadAdvanced();renderDash();toast('Inventory saved')});return}
+  const cd=e.target.closest('[data-coupon-del]'); if(cd){await busy(cd,async()=>{await sb.from('coupons').delete().eq('id',cd.dataset.couponDel);await loadAdvanced();renderDash();toast('Coupon deleted')});return}
+  const rv=e.target.closest('[data-review]'); if(rv){await busy(rv,async()=>{await sb.from('reviews').update({approved:rv.dataset.approved==='true'}).eq('id',rv.dataset.review);await loadAdvanced();renderDash();toast('Review updated')});return}
+  const pb=e.target.closest('[data-publish]'); if(pb&&ADV.extra.profile?.role==='admin'){await busy(pb,async()=>{ok(await sb.rpc('admin_set_store_published',{p_store:pb.dataset.publish,p_published:pb.dataset.value==='true'}));toast('Store visibility updated');renderDash()});return}
+});
+addEventListener('submit',async e=>{
+  if(e.target.id==='couponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#cpCode').value.trim().toUpperCase();const type=$('#cpType').value;const val=Math.max(1,parseInt($('#cpValue').value,10)||0);const min=Math.max(0,parseInt($('#cpMin').value,10)||0);const lim=Math.max(0,parseInt($('#cpLimit').value,10)||0);const ex=$('#cpExpiry').value?new Date($('#cpExpiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();renderDash();toast('Coupon created')});return}
+  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),theme:$('#storeTheme').value,payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
+});
+// Order tracking page without exposing order details until store + order number + phone match.
 function renderTrack(){
-
-  const el=$('#v-login');
-
-  if(!el)return;
-
-  $$('[data-view]').forEach(
-    x=>x.hidden=true
-  );
-
-  el.hidden=false;
-
-  el.innerHTML=`
-
-    <div class="wrap auth">
-
-      <form
-        class="builder"
-        id="trackForm"
-      >
-
-        <h2>
-          Track your order
-        </h2>
-
-        <p class="fine">
-          Enter your order number and phone number.
-        </p>
-
-        <label>
-          Order number
-          <input
-            id="trackId"
-            required
-            placeholder="Order ID"
-          >
-        </label>
-
-        <label>
-          Phone number
-          <input
-            id="trackPhone"
-            inputmode="tel"
-            required
-            placeholder="03XXXXXXXXX"
-          >
-        </label>
-
-        <button
-          class="btn primary big"
-          type="submit"
-        >
-          Track order
-        </button>
-
-        <div id="trackResult"></div>
-
-        <a
-          class="fine"
-          href="#/"
-        >
-          ← Back to EasyBuy
-        </a>
-
-      </form>
-
-    </div>
-  `;
+  const el=$('#v-login'); el.hidden=false; $('#v-home').hidden=true; $('#v-dashboard').hidden=true; $('#v-store').hidden=true; $('#siteHeader').hidden=false; $('#siteFooter').hidden=true;
+  el.innerHTML=`<div class="wrap track-wrap"><div class="builder"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store link slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult"></div></div></div>`;
 }
-
-
-document.addEventListener(
-  'submit',
-  async e=>{
-
-    if(e.target.id!=='trackForm'){
-      return;
-    }
-
-    e.preventDefault();
-
-    const id=
-      $('#trackId').value.trim();
-
-    const phone=
-      $('#trackPhone').value.trim();
-
-    const result=
-      $('#trackResult');
-
-    if(!id||!phone)return;
-
-    await busy(
-      e.submitter,
-      async()=>{
-
-        const r=
-          await sb
-            .from('orders')
-            .select(
-              'id,status,total,currency,created_at,customer_name,customer_phone,city'
-            )
-            .eq(
-              'id',
-              id
-            )
-            .eq(
-              'customer_phone',
-              phone
-            )
-            .maybeSingle();
-
-        if(r.error){
-          throw r.error;
-        }
-
-        if(!r.data){
-
-          result.innerHTML=`
-            <div class="payment-note">
-              No matching order was found.
-            </div>
-          `;
-
-          return;
-        }
-
-        const o=r.data;
-
-        result.innerHTML=`
-
-          <div class="track-card">
-
-            <strong>
-              Order #${esc(
-                String(o.id).slice(0,8).toUpperCase()
-              )}
-            </strong>
-
-            <span>
-              Status:
-              <b>
-                ${esc(o.status||'New')}
-              </b>
-            </span>
-
-            <span>
-              Total:
-              ${fmtCur(
-                o.total||0,
-                o.currency||'PKR'
-              )}
-            </span>
-
-            <span>
-              Date:
-              ${formatDate(o.created_at)}
-            </span>
-
-          </div>
-        `;
-      }
-    );
-  }
-);
-
-
-/* ---------- storefront events ---------- */
-
-document.addEventListener(
-  'input',
-  e=>{
-
-    if(e.target.id==='sfSearch'){
-
-      SF.q=e.target.value;
-
-      drawGrid();
-    }
-  }
-);
-
-
-document.addEventListener(
-  'change',
-  e=>{
-
-    if(e.target.id==='sfCountry'){
-
-      SF.country=
-        e.target.value;
-
-      if(SF.store){
-
-        lsSet(
-          'eb.country.'+
-          SF.store.id,
-          SF.country
-        );
-      }
-
-      syncCheckout();
-
-      drawGrid();
-
-      return;
-    }
-
-    if(
-      e.target.id==='cPay'
-    ){
-
-      drawPaymentInfo();
-
-      return;
-    }
-
-    const select=
-      e.target.closest(
-        '[data-variant-for]'
-      );
-
-    if(select){
-
-      return;
-    }
-  }
-);
-
-
-document.addEventListener(
-  'click',
-  async e=>{
-
-    const cat=
-      e.target.closest(
-        '[data-scat]'
-      );
-
-    if(cat){
-
-      SF.cat=
-        cat.dataset.scat||'';
-
-      drawGrid();
-
-      return;
-    }
-
-    const add=
-      e.target.closest(
-        '[data-add]'
-      );
-
-    if(add){
-
-      const id=
-        add.dataset.add;
-
-      const variantEl=
-        document.querySelector(
-          `[data-variant-for="${CSS.escape(id)}"]`
-        );
-
-      const variant=
-        variantEl
-          ?variantEl.value
-          :'';
-
-      if(
-        addToCart(
-          id,
-          variant
-        )
-      ){
-
-        toast(
-          'Added to cart'
-        );
-      }
-
-      return;
-    }
-
-    const prod=
-      e.target.closest(
-        '[data-sf-product]'
-      );
-
-    if(prod){
-
-      openProduct(
-        prod.dataset.sfProduct
-      );
-
-      return;
-    }
-
-    const pmAdd=
-      e.target.closest(
-        '[data-pm-add]'
-      );
-
-    if(pmAdd){
-
-      const variant=
-        $('#pmVariant')?.value||'';
-
-      if(
-        addToCart(
-          pmAdd.dataset.pmAdd,
-          variant
-        )
-      ){
-
-        toast(
-          'Added to cart'
-        );
-
-        closeProduct();
-      }
-
-      return;
-    }
-
-    if(
-      e.target.closest(
-        '[data-sf="opencart"]'
-      )
-    ){
-
-      openCart();
-
-      return;
-    }
-
-    if(
-      e.target.closest(
-        '[data-sf="closecart"]'
-      )
-    ){
-
-      closeCart();
-
-      return;
-    }
-
-    if(
-      e.target.closest(
-        '[data-sf="closeproduct"]'
-      )
-    ){
-
-      closeProduct();
-
-      return;
-    }
-
-    if(
-      e.target.closest(
-        '[data-sf="closedone"]'
-      )
-    ){
-
-      closeDone();
-
-      return;
-    }
-
-    const dec=
-      e.target.closest(
-        '[data-cart-dec]'
-      );
-
-    if(dec){
-
-      changeCartQty(
-        Number(
-          dec.dataset.cartDec
-        ),
-        -1
-      );
-
-      return;
-    }
-
-    const inc=
-      e.target.closest(
-        '[data-cart-inc]'
-      );
-
-    if(inc){
-
-      changeCartQty(
-        Number(
-          inc.dataset.cartInc
-        ),
-        1
-      );
-
-      return;
-    }
-
-    const rem=
-      e.target.closest(
-        '[data-cart-remove]'
-      );
-
-    if(rem){
-
-      removeCartItem(
-        Number(
-          rem.dataset.cartRemove
-        )
-      );
-
-      return;
-    }
-
-    const track=
-      e.target.closest(
-        '[data-track-store]'
-      );
-
-    if(track){
-
-      closeCart();
-
-      return;
-    }
-  }
-);
-
-
-function openCart(){
-
-  const d=$('#sfDrawer');
-
-  if(!d)return;
-
-  d.hidden=false;
-
-  d.classList.add('show');
-
-  document.body.classList.add(
-    'drawer-open'
-  );
-
-  drawCart();
-}
-
-
-function closeCart(){
-
-  const d=$('#sfDrawer');
-
-  if(!d)return;
-
-  d.classList.remove('show');
-
-  document.body.classList.remove(
-    'drawer-open'
-  );
-
-  setTimeout(()=>{
-    d.hidden=true;
-  },200);
-}
-
-
-function closeDone(){
-
-  const m=$('#sfDone');
-
-  if(!m)return;
-
-  m.classList.remove('show');
-
-  setTimeout(()=>{
-    m.hidden=true;
-  },200);
-}
-
-
-function changeCartQty(
-  index,
-  delta
-){
-
-  const cart=
-    getCart();
-
-  const item=
-    cart[index];
-
-  if(!item)return;
-
-  const p=
-    SF.products.find(
-      x=>x.id===item.id
-    );
-
-  if(!p)return;
-
-  const next=
-    Number(item.qty||0)+
-    delta;
-
-  if(next<=0){
-
-    cart.splice(
-      index,
-      1
-    );
-
-  }else{
-
-    if(
-      p.stock!=null&&
-      next>p.stock
-    ){
-
-      toast(
-        `Only ${p.stock} available`
-      );
-
-      return;
-    }
-
-    item.qty=
-      Math.min(
-        99,
-        next
-      );
-  }
-
-  setCart(cart);
-
-  drawCart();
-}
-
-
-function removeCartItem(index){
-
-  const cart=
-    getCart();
-
-  if(
-    index<0||
-    index>=cart.length
-  )return;
-
-  cart.splice(
-    index,
-    1
-  );
-
-  setCart(cart);
-
-  drawCart();
-
-  toast(
-    'Item removed'
-  );
-}
-
-
-/* ---------- checkout submit binding ---------- */
-
-document.addEventListener(
-  'submit',
-  e=>{
-
-    if(
-      e.target.id==='sfForm'
-    ){
-
-      placeOrder(e);
-    }
-  }
-);
-
-
-/* ---------- keyboard / modal helpers ---------- */
-
-document.addEventListener(
-  'keydown',
-  e=>{
-
-    if(e.key!=='Escape'){
-      return;
-    }
-
-    closeProduct();
-    closeCart();
-    closeDone();
-  }
-);
-
-
-document.addEventListener(
-  'click',
-  e=>{
-
-    if(
-      e.target.id==='sfDrawer'
-    ){
-      closeCart();
-    }
-
-    if(
-      e.target.id==='sfProduct'
-    ){
-      closeProduct();
-    }
-
-    if(
-      e.target.id==='sfDone'
-    ){
-      closeDone();
-    }
-  }
-);
-
-
-/* ---------- app setup ---------- */
-
-async function initAuth(){
-
-  if(!sb){
-
-    paintNav();
-
-    return;
-  }
-
-  try{
-
-    const session=
-      await sb.auth.getSession();
-
-    USER=
-      session.data.session?.user||
-      null;
-
-    paintNav();
-
-    sb.auth.onAuthStateChange(
-      (_event,session)=>{
-
-        USER=
-          session?.user||
-          null;
-
-        paintNav();
-
-        if(
-          location.hash==='#/dashboard'&&
-          !USER
-        ){
-
-          navigate('#/login');
-
-        }else if(
-          location.hash==='#/dashboard'&&
-          USER
-        ){
-
-          loadDash();
-        }
-      }
-    );
-
-  }catch(e){
-
-    console.error(
-      'Auth error:',
-      e
-    );
-  }
-}
-
-
-function setupState(){
-
-  document.body.classList.toggle(
-    'is-unconfigured',
-    !configured
-  );
-
-  const banner=
-    $('#setupBanner');
-
-  if(banner){
-
-    banner.hidden=
-      configured;
-  }
-}
-
-
-function init(){
-
-  setupState();
-
-  initBuilder();
-
-  initAuth();
-
-  route();
-
-  if(
-    !location.hash
-  ){
-    navigate('#/');
-  }
-}
-
-
-if(
-  document.readyState==='loading'
-){
-
-  document.addEventListener(
-    'DOMContentLoaded',
-    init
-  );
-
-}else{
-
-  init();
-}
+addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div class="track-result"><b>Order #${x.order_no} from ${esc(st.name)}</b><p>Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div class="track-result">Order not found. Check the store slug, order number and phone number.</div>'})});
+// Extend router for tracking while retaining the existing router behavior.
+const _route=route;
+route=function(){const h=location.hash||'#/';if(h==='#/track'){renderTrack();return}_route()};
