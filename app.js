@@ -6,6 +6,16 @@ const uid=()=>Math.random().toString(36).slice(2,8);
 const CATS={Pets:'🐾',Fashion:'👗',Electronics:'🎧',Home:'🏠',Beauty:'💄',Other:'🛍️'};
 const COLORS=['#0a7d55','#1f6f9f','#d8452e','#7a4dd8','#c98a00','#c2185b','#26332e'];
 const STATUSES=['New','Confirmed','Shipped','Delivered','Cancelled'];
+const THEMES=['classic','minimal','bold','elegant'];
+const SECTION_TYPES={
+  hero:{name:'Hero',icon:'🎯',desc:'Big headline with CTA'},
+  about:{name:'About',icon:'ℹ️',desc:'Tell your story'},
+  products:{name:'Featured Products',icon:'🛍️',desc:'Showcase products'},
+  contact:{name:'Contact',icon:'📞',desc:'Phone, email, WhatsApp'},
+  faq:{name:'FAQ',icon:'❓',desc:'Common questions'},
+  testimonials:{name:'Testimonials',icon:'⭐',desc:'Customer reviews'},
+  newsletter:{name:'Newsletter',icon:'📧',desc:'Collect emails'}
+};
 const slugify=s=>{let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24).replace(/-+$/,'');if(b.length<3)b=(b+'-shop').replace(/^-/,'');return b};
 const slugPreview=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,24)||'yourstore';
 function ink(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#10231d':'#ffffff'}
@@ -46,7 +56,7 @@ function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
 const AUTH={mode:'signup',note:''};
 function renderLogin(){
   const su=AUTH.mode==='signup',pend=readPending();
-  $('#v-login').innerHTML=`<div class="wrap auth" style="padding:60px 0;min-height:calc(100vh - 110px);display:grid;place-items:center"><form class="builder" id="authForm" style="width:min(520px,100%)">
+  $('#v-login').innerHTML=`<div class="wrap" style="padding:60px 0;min-height:calc(100vh - 110px);display:grid;place-items:center"><form class="builder" id="authForm" style="width:min(520px,100%)">
     <h2>${su?'Create your seller account':'Log in'}</h2>
     <p class="fine" style="margin:0 0 16px">${esc(pend?'Your store "'+pend.name+'" will be created as soon as your account is ready.':AUTH.note||'Sign up with your email address and a password.')}</p>
     <label>Email<input id="aEmail" type="email" autocomplete="email" required></label>
@@ -65,9 +75,20 @@ async function afterAuth(){
 }
 async function createStore(d){
   let base=slugify(d.name);
+  const defaults=[
+    {id:uid(),type:'hero',enabled:true},
+    {id:uid(),type:'products',enabled:true},
+    {id:uid(),type:'about',enabled:false},
+    {id:uid(),type:'contact',enabled:true}
+  ];
   for(let i=0;i<5;i++){
     const slug=i===0?base:(base.slice(0,24)+'-'+uid().slice(0,3));
-    const r=await sb.from('stores').insert({slug,name:d.name,category:d.cat,color:d.color,whatsapp:d.wa||'',tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.'}).select().single();
+    const r=await sb.from('stores').insert({
+      slug,name:d.name,category:d.cat,color:d.color,whatsapp:d.wa||'',
+      tagline:'Welcome to '+d.name+'. Order online and pay in cash when it arrives.',
+      theme:'classic',
+      sections:defaults
+    }).select().single();
     if(!r.error)return r.data;
     if(r.error.code!=='23505')throw r.error;
   }
@@ -142,7 +163,7 @@ function initBuilder(){
     const draft={name,cat:B.cat,color:B.color,wa:$('#bWa').value.trim()};
     if(!sb){toast('Add your Supabase keys in config.js first');return}
     if(!USER){lsSet('eb.pending',JSON.stringify(draft));AUTH.mode='signup';location.hash='#/login';route();return}
-    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='products';toast('Store created. Add your first product.');location.hash='#/dashboard';route()});
+    await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='design';toast('Store created. Now design it!');location.hash='#/dashboard';route()});
   });
   $('#navCreate').addEventListener('click',e=>{
     if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
@@ -210,16 +231,17 @@ function renderDash(){
       <div class="side-nav">
         <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
         <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
+        <button class="${D.tab==='design'?'active':''}" data-tab="design">🎨 Design</button>
         <button class="${D.tab==='advanced'?'active':''}" data-tab="advanced">📊 Analytics & tools</button>
         <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
       </div>
       <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
     </aside>
     <div class="dash-main">
-      <div class="mobile-dash-nav" style="display:none;gap:6px;padding:12px 16px 0">${['orders','products','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
-      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
-      <div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>
-      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
+      <div class="mobile-dash-nav">${['orders','products','design','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='design'?'Design your store':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      ${D.tab==='design'?'':`<div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>`}
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
 }
@@ -246,12 +268,101 @@ function productsPanel(st){
     <div class="two"><label>SKU<input id="pSku" maxlength="40" value="${esc(f.sku||'')}" placeholder="Optional SKU"></label><label>Stock (empty = not tracked, 0 = sold out)<input id="pStock" type="number" min="0" value="${f.stock==null?'':esc(f.stock)}" placeholder="Not tracked"></label></div>
     <label>Variants <span class="fine" style="display:inline">(one per line, e.g. Red | Small | 799)</span><textarea id="pVariants" placeholder="Red | Small | 799\nBlue | Medium | 849">${esc((f.variants||[]).map(v=>[v.name||'',v.option||'',v.price||''].join(' | ')).join('\n'))}</textarea></label>
     <label>Description<textarea id="pDesc" maxlength="240" placeholder="Short product description">${esc(f.description||'')}</textarea></label>
-    <div class="img-pick" style="display:flex;gap:14px;align-items:center;padding:14px;margin-bottom:14px"><div class="thumb" id="pThumb" style="width:64px;height:64px;display:grid;place-items:center;background:#f3f5f4">${f.image_url?`<img src="${esc(f.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
+    <div class="img-pick"><div class="thumb" id="pThumb" style="width:64px;height:64px;display:grid;place-items:center;background:#f3f5f4">${f.image_url?`<img src="${esc(f.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`:(CATS[st.category]||'🛍️')}</div><label style="margin:0;flex:1">Product photo<input id="pImg" type="file" accept="image/*"></label></div>
     <div style="display:flex;gap:10px"><button class="btn primary" type="submit">Save product</button><button class="btn" type="button" data-act="cancelform">Cancel</button></div>
   </form>`:'';
-  const list=MY.products.length?`<div class="panel-box"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell" style="display:flex;gap:10px;align-items:center"><div class="thumb" style="width:44px;height:44px;display:grid;place-items:center;background:#f3f5f4">${p.image_url?`<img src="${esc(p.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="panel-box empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
+  const list=MY.products.length?`<div class="panel-box"><div class="row-head"><div><h2>All products</h2><p class="fine">${MY.products.length} product${MY.products.length===1?'':'s'} in this store.</p></div>${f?'':'<button class="btn primary" data-act="addproduct">+ Add product</button>'}</div><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th>Price</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>${MY.products.map(p=>`<tr><td><div class="product-cell"><div class="thumb" style="width:44px;height:44px;display:grid;place-items:center;background:#f3f5f4">${p.image_url?`<img src="${esc(p.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`:(CATS[st.category]||'🛍️')}</div><div><b>${esc(p.name)}</b><div class="fine" style="margin:0">${p.old_price>p.price?`Sale · ${money(p.old_price)}`:'Regular price'}</div></div></div></td><td><b>${money(p.price)}</b></td><td><span class="mini-status">${p.is_active?'Visible':'Hidden'}</span></td><td>${esc(p.category||'—')}</td><td><div class="actions"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn small danger" data-del="${p.id}">Delete</button></div></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="panel-box empty"><h3>Your product catalog is empty</h3><p>Add your first product with a photo, price and description.</p><button class="btn primary" data-act="addproduct">Add your first product</button></div>`;
   return form+list;
 }
+
+/* ---------- DESIGN PANEL (THEMES + SECTIONS) ---------- */
+function getSections(st){
+  if(Array.isArray(st.sections)&&st.sections.length)return st.sections;
+  return [
+    {id:uid(),type:'hero',enabled:true},
+    {id:uid(),type:'products',enabled:true},
+    {id:uid(),type:'about',enabled:false},
+    {id:uid(),type:'contact',enabled:true}
+  ];
+}
+function designPanel(st){
+  const theme=st.theme||'classic';
+  const sections=getSections(st);
+  return `<div class="designer-wrap">
+    <div class="designer-grid">
+      <div class="designer-side">
+        <div class="designer-card">
+          <h3>Store theme</h3>
+          <div class="theme-picker">
+            ${THEMES.map(t=>`
+              <button class="theme-opt ${t} ${theme===t?'on':''}" data-set-theme="${t}">
+                ${t.charAt(0).toUpperCase()+t.slice(1)}
+                <div class="swatch-row"><i></i><i></i></div>
+              </button>`).join('')}
+          </div>
+        </div>
+        <div class="designer-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h3 style="margin:0">Sections</h3>
+            <button class="btn small primary" data-act="addsection">+ Add</button>
+          </div>
+          <div class="sections-list" id="sectionsList">
+            ${sections.map((s,i)=>`
+              <div class="section-item ${s.enabled?'':'off'}" data-sid="${s.id}">
+                <span class="drag">⋮⋮</span>
+                <span class="name">${SECTION_TYPES[s.type]?.icon||'📄'} ${SECTION_TYPES[s.type]?.name||s.type}</span>
+                <div class="acts">
+                  <button data-sup="${s.id}" title="Move up" ${i===0?'disabled':''}>↑</button>
+                  <button data-sdown="${s.id}" title="Move down" ${i===sections.length-1?'disabled':''}>↓</button>
+                  <button class="del" data-sdel="${s.id}" title="Remove">×</button>
+                </div>
+                <div class="toggle ${s.enabled?'on':''}" data-stoggle="${s.id}" title="Toggle visibility"></div>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div class="designer-card">
+          <h3>Quick actions</h3>
+          <button class="btn primary big" data-act="savetheme" style="margin-bottom:8px">💾 Save & publish</button>
+          <a class="btn big" href="#/s/${esc(st.slug)}" target="_blank">👁️ Preview in new tab</a>
+        </div>
+      </div>
+      <div class="designer-preview">
+        <div class="designer-preview-head">
+          <i></i><i></i><i></i>
+          <span>${esc(st.slug)}.easybuy.pk</span>
+        </div>
+        <div class="designer-preview-body">
+          <iframe id="designerFrame" src="#/s/${esc(st.slug)}" title="Store preview"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Save theme */
+async function saveTheme(theme){
+  const st=curS();if(!st)return;
+  await busy(null,async()=>{
+    const r=await sb.from('stores').update({theme}).eq('id',st.id).select().single();
+    if(r.error)throw r.error;
+    MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+    toast('Theme applied');
+    refreshDesignerFrame();
+    renderDash();
+  });
+}
+async function saveSections(sections){
+  const st=curS();if(!st)return;
+  const r=await sb.from('stores').update({sections}).eq('id',st.id).select().single();
+  if(r.error)throw r.error;
+  MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+  refreshDesignerFrame();
+}
+function refreshDesignerFrame(){
+  const f=$('#designerFrame');
+  if(f){const src=f.src;f.src=src;}
+}
+
 function settingsPanel(st){
   return `<form class="panel-box" id="sForm">
     <div class="row-head"><h2>Store settings</h2></div>
@@ -259,7 +370,7 @@ function settingsPanel(st){
     <label>WhatsApp number<input id="sWa" inputmode="tel" value="${esc(st.whatsapp)}"></label></div>
     <label>Tagline shown on your store<input id="sTag" maxlength="120" value="${esc(st.tagline||'')}"></label>
     <label>Store description<textarea id="sDesc" maxlength="500">${esc(st.description||'')}</textarea></label>
-    <fieldset><legend>Store colour</legend><div class="swatches" id="sColors">${COLORS.map(c=>`<button type="button" class="sw" data-scolor="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c.toLowerCase()===st.color.toLowerCase()}"></button>`).join('')}</div></fieldset>
+    <fieldset><legend>Store accent colour</legend><div class="swatches" id="sColors">${COLORS.map(c=>`<button type="button" class="sw" data-scolor="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c.toLowerCase()===st.color.toLowerCase()}"></button>`).join('')}</div></fieldset>
     <p class="fine" style="margin:0 0 14px">Store link: ${esc(location.href.split('#')[0])}#/s/${esc(st.slug)}</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save settings</button><button class="btn danger" type="button" data-act="delstore">Delete this store</button></div>
   </form>`;
@@ -275,6 +386,90 @@ async function uploadImage(blob){
   if(r.error)throw r.error;
   return sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
 }
+
+/* ---------- Design interactions ---------- */
+function bindDesigner(){
+  const el=$('#dash');
+  el.addEventListener('click',async e=>{
+    // Theme
+    const th=e.target.closest('[data-set-theme]');
+    if(th){await saveTheme(th.dataset.setTheme);return}
+    // Add section
+    if(e.target.closest('[data-act="addsection"]')){openAddSectionModal();return}
+    // Section toggle
+    const tg=e.target.closest('[data-stoggle]');
+    if(tg){
+      const st=curS();const sections=getSections(st);
+      const s=sections.find(x=>x.id===tg.dataset.stoggle);
+      if(s){s.enabled=!s.enabled;await saveSections(sections);renderDash()}
+      return;
+    }
+    // Section up
+    const up=e.target.closest('[data-sup]');
+    if(up){
+      const st=curS();const sections=getSections(st);
+      const i=sections.findIndex(x=>x.id===up.dataset.sup);
+      if(i>0){[sections[i-1],sections[i]]=[sections[i],sections[i-1]];await saveSections(sections);renderDash()}
+      return;
+    }
+    // Section down
+    const dn=e.target.closest('[data-sdown]');
+    if(dn){
+      const st=curS();const sections=getSections(st);
+      const i=sections.findIndex(x=>x.id===dn.dataset.sdown);
+      if(i>=0&&i<sections.length-1){[sections[i],sections[i+1]]=[sections[i+1],sections[i]];await saveSections(sections);renderDash()}
+      return;
+    }
+    // Section delete
+    const dl=e.target.closest('[data-sdel]');
+    if(dl){
+      const st=curS();let sections=getSections(st);
+      sections=sections.filter(x=>x.id!==dl.dataset.sdel);
+      await saveSections(sections);renderDash();
+      return;
+    }
+    // Save theme button
+    if(e.target.closest('[data-act="savetheme"]')){
+      toast('Store saved & published');refreshDesignerFrame();return;
+    }
+  });
+}
+
+function openAddSectionModal(){
+  const st=curS();
+  const existing=getSections(st).map(s=>s.type);
+  const available=Object.entries(SECTION_TYPES).filter(([k,v])=>!existing.includes(k));
+  const html=`
+    <div class="modal open" id="addSectionModal" style="z-index:150">
+      <div class="box" style="max-width:520px">
+        <div class="sheet-head"><h2>Add a section</h2><button class="btn small" data-close-add>Close</button></div>
+        ${available.length?`<div class="add-section-grid">
+          ${available.map(([k,v])=>`<button class="section-add-opt" data-add-type="${k}">
+            <div class="ico">${v.icon}</div>
+            <b>${v.name}</b>
+            <small>${v.desc}</small>
+          </button>`).join('')}
+        </div>`:'<p class="fine">All available sections have already been added.</p>'}
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  $('#addSectionModal').addEventListener('click',async e=>{
+    if(e.target.id==='addSectionModal'||e.target.closest('[data-close-add]')){
+      $('#addSectionModal').remove();return;
+    }
+    const opt=e.target.closest('[data-add-type]');
+    if(opt){
+      const st=curS();const sections=getSections(st);
+      sections.push({id:uid(),type:opt.dataset.addType,enabled:true});
+      await saveSections(sections);
+      $('#addSectionModal').remove();
+      renderDash();
+      toast(SECTION_TYPES[opt.dataset.addType].name+' added');
+    }
+  });
+}
+
+/* ---------- dashboard bindings ---------- */
 function bindDash(){
   const el=$('#v-dashboard');
   el.addEventListener('click',async e=>{
@@ -300,7 +495,7 @@ function bindDash(){
     if(e.target.id==='storeSel'){MY.active=e.target.value;D.form=null;await loadStoreData();renderDash();return}
     if(e.target.dataset.status){const o=MY.orders.find(x=>x.id===e.target.dataset.status);
       if(o)await busy(e.target,async()=>{ok(await sb.from('orders').update({status:e.target.value}).eq('id',o.id));o.status=e.target.value;renderDash();toast('Order #'+o.order_no+' marked '+o.status)});return}
-    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="" style="width:100%;height:100%;object-fit:cover">'})}
+    if(e.target.id==='pImg'&&e.target.files[0]){toBlob(e.target.files[0],b=>{D.file=b;$('#pThumb').innerHTML='<img src="'+URL.createObjectURL(b)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px">'})}
   });
   el.addEventListener('submit',async e=>{
     e.preventDefault();const st=curS();const btn=e.submitter;
@@ -394,6 +589,96 @@ function addToCart(pid,variant){
   x?x.qty=Math.min(99,x.qty+1):c.push({id:pid,qty:1,variant:variant||''});
   setCart(c);drawCart();return true;
 }
+
+/* ============================================================
+   STORE SECTIONS RENDERER
+   ============================================================ */
+function renderSection(sec,st,products){
+  if(!sec.enabled)return '';
+  const t=sec.type;
+  if(t==='hero'){
+    const tag=st.tagline||('Welcome to '+st.name+'. Order online and pay in cash when it arrives.');
+    return `<section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(tag)}</p><div class="sf-trust" id="sfTrust"></div></div></section>`;
+  }
+  if(t==='about'){
+    return `<section class="sf-section alt"><div class="wrap">
+      <div class="sf-about-grid">
+        <div class="sf-about-copy">
+          <h2>About ${esc(st.name)}</h2>
+          <p>${esc(st.description||('We are '+st.name+', a '+st.category.toLowerCase()+' store based in '+countryName(homeCountry(st))+'. We take pride in offering quality products with fast Cash on Delivery across the country.'))}</p>
+        </div>
+        <div style="background:linear-gradient(135deg,#eef5f2,#d9e8e2);border-radius:20px;aspect-ratio:4/3;display:grid;place-items:center;font-size:80px">${CATS[st.category]||'🛍️'}</div>
+      </div>
+    </div></section>`;
+  }
+  if(t==='contact'){
+    return `<section class="sf-section"><div class="wrap">
+      <h2>Get in touch</h2>
+      <p class="lead-center">We usually reply within an hour on WhatsApp.</p>
+      <div class="sf-contact-grid">
+        <div>
+          ${st.whatsapp?`<div class="sf-contact-item"><div class="sf-contact-ico">💬</div><div><b>WhatsApp</b><span>+${esc(waNum(st.whatsapp))}</span></div></div>`:''}
+          <div class="sf-contact-item"><div class="sf-contact-ico">📦</div><div><b>Delivery</b><span>Cash on Delivery across ${esc(countryName(homeCountry(st)))}</span></div></div>
+          <div class="sf-contact-item"><div class="sf-contact-ico">⏰</div><div><b>Hours</b><span>Open 24/7 for online orders</span></div></div>
+        </div>
+        <div class="sf-contact-form">
+          <h3 style="margin-bottom:12px">Send us a message</h3>
+          <label>Your name<input type="text" placeholder="Your name"></label>
+          <label>Your phone<input type="tel" placeholder="03XXXXXXXXX"></label>
+          <label>Message<textarea placeholder="I'd like to ask about..."></textarea></label>
+          ${st.whatsapp?`<a class="btn primary big" target="_blank" rel="noopener" href="https://wa.me/${waNum(st.whatsapp)}?text=${encodeURIComponent('Assalam o Alaikum, I am interested in your store '+st.name)}">Send on WhatsApp</a>`:'<button class="btn primary big" disabled>WhatsApp not configured</button>'}
+        </div>
+      </div>
+    </div></section>`;
+  }
+  if(t==='faq'){
+    return `<section class="sf-section alt"><div class="wrap">
+      <h2>Frequently asked questions</h2>
+      <p class="lead-center">Everything you need to know before ordering.</p>
+      <div class="sf-faq">
+        <details open><summary>How do I place an order?</summary><p>Browse our products, add them to your cart, and fill in your delivery details at checkout. It takes under a minute.</p></details>
+        <details><summary>Do you offer Cash on Delivery?</summary><p>Yes! You pay the courier in cash when your parcel arrives. No advance payment needed.</p></details>
+        <details><summary>How long does delivery take?</summary><p>Within 2-4 working days for most cities across Pakistan.</p></details>
+        <details><summary>Can I return or exchange?</summary><p>Yes — contact us on WhatsApp within 3 days of receiving your order.</p></details>
+        <details><summary>How can I track my order?</summary><p>Save your order number — you can track it any time from the <a href="#/track" style="color:var(--brand)">track order page</a>.</p></details>
+      </div>
+    </div></section>`;
+  }
+  if(t==='testimonials'){
+    return `<section class="sf-section"><div class="wrap">
+      <h2>What our customers say</h2>
+      <p class="lead-center">Real reviews from real buyers.</p>
+      <div class="sf-testimonials">
+        <div class="sf-testi"><div class="stars">★★★★★</div><p>"Excellent quality and super fast delivery. Ordered on Monday, got it Wednesday. Will buy again!"</p><b>Ayesha K.</b><small>Karachi</small></div>
+        <div class="sf-testi"><div class="stars">★★★★★</div><p>"Cash on delivery made it so easy — no risk. Product was exactly as described. Highly recommended."</p><b>Bilal A.</b><small>Lahore</small></div>
+        <div class="sf-testi"><div class="stars">★★★★☆</div><p>"Great communication on WhatsApp. They answered all my questions quickly. Happy customer!"</p><b>Fatima S.</b><small>Islamabad</small></div>
+      </div>
+    </div></section>`;
+  }
+  if(t==='newsletter'){
+    return `<section class="sf-section"><div class="wrap">
+      <div class="sf-newsletter">
+        <h2>Get updates on new arrivals</h2>
+        <p>Subscribe and be the first to know about sales and new products.</p>
+        <form onsubmit="event.preventDefault();this.reset();alert('Thank you for subscribing!')">
+          <input type="email" placeholder="your@email.com" required>
+          <button type="submit">Subscribe</button>
+        </form>
+      </div>
+    </div></section>`;
+  }
+  return '';
+}
+
+function renderProductsSection(st,products){
+  return `<section class="sf-section"><div class="wrap">
+    <h2>${products.length?'Our products':'No products yet'}</h2>
+    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products" style="margin:24px auto;display:block">
+    <div class="sf-tools" style="margin:14px 0 22px"><div class="cat-filter" id="sfCats"></div></div>
+    <div class="grid" id="sfGrid"></div>
+  </div></section>`;
+}
+
 async function renderStore(slug){
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
@@ -411,15 +696,21 @@ async function renderStore(slug){
   {const saved=lsGet('eb.country.'+st.id),ml=marketList(st);SF.country=ml.some(m=>m.country===saved)?saved:homeCountry(st)}
   document.title=st.name+' on EasyBuy';
   el.style.setProperty('--accent',st.color);el.style.setProperty('--on-accent',ink(st.color));
+  el.className='theme-'+(st.theme||'classic');
+
+  const sections=getSections(st);
+
+  // Build sections HTML
+  let bodyHtml='';
+  sections.forEach(sec=>{
+    if(sec.type==='products'){bodyHtml+=renderProductsSection(st,prods)}
+    else bodyHtml+=renderSection(sec,st,prods);
+  });
+
   el.innerHTML=`
   <div class="eb-bar">You are viewing ${esc(st.name)} on EasyBuy.<a href="#/dashboard">Seller dashboard</a><a href="#/">EasyBuy home</a></div>
-  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right" style="display:flex;gap:8px;align-items:center">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country" style="width:auto;margin:0">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart" style="background:var(--accent);color:var(--on-accent)">Cart <span id="sfCount">0</span></button></div></div></header>
-  <section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(st.tagline||'')}</p>
-    <div class="sf-trust" id="sfTrust"></div></div></section>
-  <div class="wrap sf-main">
-    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products">
-    <div class="sf-tools" style="margin:14px 0 22px"><div class="cat-filter" id="sfCats"></div></div><div class="grid" id="sfGrid"></div>
-  </div>
+  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country" style="width:auto;margin:0">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart" style="background:var(--accent);color:var(--on-accent)">Cart <span id="sfCount">0</span></button></div></div></header>
+  <div class="sf-sections">${bodyHtml}</div>
   <footer class="sf-foot"><div class="wrap">Store powered by EasyBuy.</div></footer>
   <div class="drawer" id="sfDrawer"><aside class="sheet" role="dialog" aria-label="Your cart">
     <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart" aria-label="Close cart">Close</button></div>
@@ -454,7 +745,8 @@ function drawGrid(){
   const activeCat=SF.cat||'';
   if(cf)cf.querySelectorAll('[data-catfilter]').forEach(b=>b.classList.toggle('active',b.dataset.catfilter===activeCat));
   const list=SF.products.filter(p=>(!activeCat||p.category===activeCat)&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(q));
-  $('#sfGrid').innerHTML=list.map(p=>{
+  const grid=$('#sfGrid'); if(!grid)return;
+  grid.innerHTML=list.map(p=>{
     const vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id);
     const badge=isSold(p)?'<span class="chipbadge st-Cancelled">Sold out</span>':lowStock(p)?`<span class="chipbadge st-New">Only ${p.stock} left</span>`:'';
     const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>'
@@ -495,11 +787,12 @@ function openProduct(p){
 }
 function drawCart(){
   const c=validCart();
-  $('#sfCount').textContent=c.reduce((a,b)=>a+b.qty,0);
+  const cnt=$('#sfCount'); if(cnt)cnt.textContent=c.reduce((a,b)=>a+b.qty,0);
+  if(!$('#sfItems'))return;
   if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfQuote').innerHTML='';$('#sfForm').hidden=true;return}
   $('#sfForm').hidden=false;
   $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);
-    return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty" style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one" style="border:0;background:transparent;cursor:pointer">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one" style="border:0;background:transparent;cursor:pointer">+</button></div></div>`}).join('');
+    return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty" style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one" style="border:0;background:transparent;cursor:pointer">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one" style="border:0;background:transparent;cursor:pointer">+</button></div></div>`}).join('');
   refreshQuote();
 }
 let quoteT;
@@ -521,7 +814,7 @@ function refreshQuote(){
     }else q=r.data[0];
     SF.quote=q;
     const F=n=>fmtCur(n,q.currency||curMarket().currency);
-    box.innerHTML=`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot" style="display:flex;justify-content:space-between;padding:12px;margin-bottom:6px;font-weight:700"><span>Total</span><span>${F(q.total)}</span></div>`;
+    box.innerHTML=`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot" style="display:flex;justify-content:space-between;padding:12px;margin-bottom:6px;font-weight:700;background:#eef7f3;border-radius:10px"><span>Total</span><span>${F(q.total)}</span></div>`;
     if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
   },250);
 }
@@ -540,7 +833,8 @@ function syncCheckout(){
   sel.innerHTML=methods.map(x=>`<option value="${esc(x)}">${esc(payLabel(x))}</option>`).join('');
   sel.value=methods.includes(keep)?keep:methods[0];
   const n=(st.markets||[]).length;
-  $('#sfTrust').innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
+  const trust=$('#sfTrust');
+  if(trust)trust.innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
   const intl=m.country!==homeCountry(st),c=countryOf(m.country);
   $('#cIntl').hidden=!intl;$('#cPostal').required=intl;
   $('#cShipTo').textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
@@ -631,17 +925,16 @@ function marketsCard(st){
   const opts=COUNTRIES.filter(c=>!used.has(c.code)).map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('');
   const rows=ms.map(m=>`<tr><td>${esc(countryName(m.country))}</td><td>${esc(m.currency)}</td><td>1 ${esc(m.currency)} = ${Number((1/m.rate).toPrecision(6))} ${esc(cur)}</td><td>${fmtCur(m.shipping,m.currency)}</td><td>${m.free_min>0?fmtCur(m.free_min,m.currency):'Never'}</td><td>${(m.payment_methods||[]).map(payLabel).join(', ')}</td><td><button class="btn small danger" data-market-del="${esc(m.country)}">Remove</button></td></tr>`).join('');
   return `<section class="advanced-card" style="margin-top:16px;padding:24px" id="marketsCard"><h2>International selling (Markets)</h2>
-  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to. Each market has its own currency, shipping fee and payment methods.</p>
-  <form id="homeForm" class="advanced-form" style="margin-top:16px"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn primary">Save home country</button> <span class="fine">Changing the currency does not convert your existing prices.</span></div></form>
+  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to.</p>
+  <form id="homeForm" class="advanced-form" style="margin-top:16px"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn primary">Save home country</button></div></form>
   <div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Country</th><th>Currency</th><th>Rate</th><th>Shipping</th><th>Free above</th><th>Payments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7">No international markets yet.</td></tr>'}</tbody></table></div>
   ${opts?`<h3 style="margin:18px 0 8px">Add a market</h3>
   <form id="marketForm" class="advanced-form"><label>Country<select id="mkCountry">${opts}</select></label><label>Currency<input id="mkCurrency" maxlength="3" required value="${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'')}"></label>
-  <label>1 <span id="mkCurLabel">${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'unit')}</span> equals how many ${esc(cur)}?<input id="mkRate" type="number" step="any" min="0" required placeholder="Today's rate"></label>
-  <label>Shipping fee (in that currency)<input id="mkShip" type="number" step="any" min="0" value="0"></label>
-  <label>Free shipping above (0 = never)<input id="mkFree" type="number" step="any" min="0" value="0"></label>
+  <label>1 <span id="mkCurLabel">${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'unit')}</span> equals how many ${esc(cur)}?<input id="mkRate" type="number" step="any" min="0" required></label>
+  <label>Shipping fee<input id="mkShip" type="number" step="any" min="0" value="0"></label>
+  <label>Free shipping above<input id="mkFree" type="number" step="any" min="0" value="0"></label>
   <label>Payment methods<select id="mkPay" multiple><option value="bank" selected>Bank transfer</option><option value="cod">Cash on Delivery</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option></select></label>
-  <div class="full"><button class="btn primary">Add market</button></div></form>`:'<p class="fine">All supported countries are added.</p>'}
-  <p class="fine" style="margin-top:12px">Exchange rates are set by you and do not update by themselves. Check the rate before you save, and update it when it moves. Prices are rounded per item.</p></section>`;
+  <div class="full"><button class="btn primary">Add market</button></div></form>`:''}</section>`;
 }
 async function saveStoreFields(fields,msg){
   const st=curS();
@@ -666,8 +959,7 @@ document.addEventListener('submit',async e=>{
     if(!(inv>0)){toast('Enter the exchange rate');return}
     const pays=[...$('#mkPay').selectedOptions].map(x=>x.value);
     if(!pays.length){toast('Choose at least one payment method');return}
-    const m={country:$('#mkCountry').value,currency:$('#mkCurrency').value.trim().toUpperCase(),rate:Number((1/inv).toPrecision(8)),
-      shipping:Math.max(0,parseFloat($('#mkShip').value)||0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
+    const m={country:$('#mkCountry').value,currency:$('#mkCurrency').value.trim().toUpperCase(),rate:Number((1/inv).toPrecision(8)),shipping:Math.max(0,parseFloat($('#mkShip').value)||0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
     await busy(e.submitter,()=>saveStoreFields({markets:[...(st.markets||[]),m]},'Market added'));
   }
 });
@@ -696,8 +988,8 @@ function advMetrics(st){
   const byCity={}; orders.forEach(o=>byCity[o.city]=(byCity[o.city]||0)+o.total);
   const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,6), max=topCities[0]?.[1]||1;
   return `<div class="metric-grid"><div class="metric"><b>${money(revenue)}</b><span>Gross revenue</span></div><div class="metric"><b>${orders.length}</b><span>Active orders</span></div><div class="metric"><b>${money(avg)}</b><span>Average order</span></div><div class="metric"><b>${low}</b><span>Low-stock products</span></div></div>
-  <div class="advanced-grid" style="margin-top:16px"><section class="advanced-card" style="padding:24px"><h2>Sales by city</h2><p class="fine">Based on orders in this store.</p>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row" style="margin:8px 0"><span>${esc(c)}</span><div class="bar"><i style="display:block;height:100%;width:${Math.round(v/max*100)}%;border-radius:999px"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
-  <section class="advanced-card" style="padding:24px"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row" style="margin:8px 0"><span>${x}</span><div class="bar"><i style="display:block;height:100%;width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%;border-radius:999px"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
+  <div class="advanced-grid" style="margin-top:16px"><section class="advanced-card" style="padding:24px"><h2>Sales by city</h2>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row" style="margin:8px 0"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}%"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
+  <section class="advanced-card" style="padding:24px"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row" style="margin:8px 0"><span>${x}</span><div class="bar"><i style="width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
 }
 function advancedPanel(st){
   const coupons=ADV.extra.coupons||[], customers=ADV.extra.customers||[], reviews=ADV.extra.reviews||[];
@@ -707,22 +999,13 @@ function advancedPanel(st){
   const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td style="color:#f5a623">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
   return `${advMetrics(st)}
   <div class="advanced-grid" style="margin-top:16px">
-    <section class="advanced-card" style="padding:24px"><h2>Inventory</h2><p class="fine">Leave a box empty for products you do not track. 0 means sold out.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
-    <section class="advanced-card" style="padding:24px"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed (${esc((curS()&&curS().currency)||'PKR')})</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card" style="padding:24px"><h2>Inventory</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
+    <section class="advanced-card" style="padding:24px"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
     <section class="advanced-card" style="padding:24px"><h2>Customers</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
-    <section class="advanced-card" style="padding:24px"><h2>Reviews</h2><p class="fine">Approve reviews before they appear publicly.</p><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
+    <section class="advanced-card" style="padding:24px"><h2>Reviews</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
   </div>
-  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px;padding:24px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee (${esc(st.currency||'PKR')})<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above (${esc(st.currency||'PKR')})<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Theme<select id="storeTheme"><option value="classic" ${st.theme==='classic'?'selected':''}>Classic</option><option value="minimal" ${st.theme==='minimal'?'selected':''}>Minimal</option><option value="bold" ${st.theme==='bold'?'selected':''}>Bold</option></select></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
+  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px;padding:24px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
 }
-const _renderDash=renderDash;
-renderDash=function(){
-  _renderDash();
-  if(D.tab==='advanced'&&curS()){
-    loadAdvanced().then(()=>{
-      const main=$('.dash-main'); if(main) main.innerHTML=`<div class="mobile-dash-nav" style="display:none;gap:6px;padding:12px 16px 0"><button class="btn small" data-tab="orders">Orders</button><button class="btn small" data-tab="products">Products</button><button class="btn small primary" data-tab="advanced">Analytics</button><button class="btn small" data-tab="settings">Settings</button></div><div class="dash-top"><div><h1>Analytics & tools</h1><p>Inventory, customers, coupons, reviews and commerce settings.</p></div><a class="btn" href="#/s/${esc(curS().slug)}">View store</a></div>${advancedPanel(curS())}`;
-    });
-  }
-};
 addEventListener('click',async e=>{
   const stock=e.target.closest('#saveInventory');
   if(stock){await busy(stock,async()=>{for(const i of $$('.stock-input')){const p=MY.products.find(x=>x.id===i.dataset.stock);if(p){const n=i.value.trim()===''?null:Math.max(0,parseInt(i.value,10)||0);await sb.from('products').update({stock:n}).eq('id',p.id)}}await loadStoreData();await loadAdvanced();renderDash();toast('Inventory saved')});return}
@@ -731,20 +1014,20 @@ addEventListener('click',async e=>{
 });
 addEventListener('submit',async e=>{
   if(e.target.id==='couponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#cpCode').value.trim().toUpperCase();const type=$('#cpType').value;const val=Math.max(1,parseInt($('#cpValue').value,10)||0);const min=Math.max(0,parseInt($('#cpMin').value,10)||0);const lim=Math.max(0,parseInt($('#cpLimit').value,10)||0);const ex=$('#cpExpiry').value?new Date($('#cpExpiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();renderDash();toast('Coupon created')});return}
-  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),theme:$('#storeTheme').value,payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
+  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
 });
 
-/* ---------- order tracking ---------- */
+/* ---------- tracking ---------- */
 function renderTrack(){
   const el=$('#v-track');
   if(!el)return;
   el.innerHTML=`<div class="wrap" style="padding:60px 0 80px;min-height:calc(100vh - 110px)"><div class="builder" style="max-width:560px;margin-inline:auto"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult" style="margin-top:16px"></div></div></div>`;
 }
-addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fafcfb"><b>Order #${x.order_no} from ${esc(st.name)}</b><p style="margin:8px 0 0;color:var(--muted)">Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff3f0;color:#9e2a0e">Order not found. Check the store slug, order number and phone number.</div>'})});
+addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fafcfb"><b>Order #${x.order_no} from ${esc(st.name)}</b><p style="margin:8px 0 0;color:var(--muted)">Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff3f0;color:#9e2a0e">Order not found.</div>'})});
 
 /* ---------- start ---------- */
 (async function init(){
-  initBuilder();initFeatureTabs();bindDash();bindStore();
+  initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();
   if(!configured)$('#setup').hidden=false;
   else{
     try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
