@@ -127,7 +127,7 @@
 
   /* ---------- Typography ---------- */
   --font-body:
-    'Inter',
+    'Instrument Sans',
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -135,7 +135,7 @@
     sans-serif;
 
   --font-display:
-    'Plus Jakarta Sans',
+    'Bricolage Grotesque',
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -185,16 +185,6 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-variant-numeric: tabular-nums;
-  text-rendering: optimizeLegibility;
-}
-
-input, select, textarea {
-  accent-color: var(--brand);
-}
-
-button, a, input, select, textarea {
-  touch-action: manipulation;
 }
 
 img {
@@ -2936,26 +2926,3 @@ tbody tr:hover { background: rgba(0,168,120,.045); }
   .hero-preview::after { animation:none; }
   .frame, .btn, .card, .perk, .product-card, .store-row { transition:none !important; }
 }
-
-
-/* EasyBuy navigation fix: keep Home and Log in accessible on small screens. */
-@media (max-width: 760px) {
-  .nav { align-items: center; }
-  .nav-links { display:flex; align-items:center; gap:6px; flex-wrap:nowrap; }
-  .nav-links a[data-nav="home"],
-  .nav-links #navAuth { display:inline-flex !important; }
-  .nav-links a[data-nav="dashboard"] { display:none !important; }
-  .nav-links #navAuth { padding:8px 7px; white-space:nowrap; }
-  .nav-links .btn { white-space:nowrap; }
-}
-@media (max-width: 430px) {
-  .nav-links { gap:2px; }
-  .nav-links a[data-nav="home"],
-  .nav-links #navAuth { font-size:12px; padding:7px 5px; }
-  .nav-links .btn { font-size:12px; padding:8px 9px; }
-}
-
-
-/* ============================================================
-   EASYBUY — FINAL RESPONSIVE / ACCESSIBILITY POLISH
-   ============================================================ */\n.nav-links {\n  min-width: 0;\n}\n.nav-links a,\n.nav-links .linkbtn {\n  white-space: nowrap;\n}\n.site-head {\n  z-index: 100;\n}\n#toast {\n  z-index: 9999;\n}\n@media (max-width: 760px) {\n  .site-head {\n    width: min(calc(100% - 16px), 680px);\n  }\n  .nav {\n    min-width: 0;\n  }\n  .logo {\n    flex: 0 0 auto;\n  }\n  .nav-links {\n    margin-left: auto;\n    flex: 0 1 auto;\n    overflow-x: auto;\n    scrollbar-width: none;\n  }\n  .nav-links::-webkit-scrollbar { display: none; }\n  .nav-links a[data-nav="home"],\n  .nav-links #navAuth {\n    display: inline-flex !important;\n    align-items: center;\n    justify-content: center;\n  }\n}\n@media (max-width: 430px) {\n  .site-head .wrap { padding-inline: 10px; }\n  .logo { font-size: 17px; gap: 7px; }\n  .nav-links { gap: 1px; }\n  .nav-links a[data-nav="home"],\n  .nav-links #navAuth {\n    padding: 7px 5px;\n    font-size: 11px;\n  }\n  .nav-links .btn {\n    padding: 8px 8px;\n    font-size: 11px;\n  }\n}\n
