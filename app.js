@@ -864,6 +864,7 @@ function renderProductsSection(st,products){
 }
 
 async function renderStore(slug){
+  slug=(slug||'').split('?')[0];
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
 
