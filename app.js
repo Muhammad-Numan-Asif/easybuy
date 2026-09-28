@@ -232,32 +232,19 @@ function renderDash(){
         <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
         <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
         <button class="${D.tab==='design'?'active':''}" data-tab="design">🎨 Design</button>
+        <button class="${D.tab==='code'?'active':''}" data-tab="code">⚡ Custom Code</button>
         <button class="${D.tab==='advanced'?'active':''}" data-tab="advanced">📊 Analytics & tools</button>
         <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
       </div>
       <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
     </aside>
     <div class="dash-main">
-      <div class="mobile-dash-nav">${['orders','products','design','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
-      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='design'?'Design your store':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
-      ${D.tab==='design'?'':`<div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>`}
-      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
+      <div class="mobile-dash-nav">${['orders','products','design','code','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='design'?'Design your store':D.tab==='code'?'Custom code editor':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      ${(D.tab==='design'||D.tab==='code')?'':`<div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>`}
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='code'?codePanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
-  // Attach iframe load handler for designer frame
-  if(D.tab==='design'){
-    const fr=$('#designerFrame');
-    if(fr){
-      fr.addEventListener('load',()=>{
-        try{
-          const doc=fr.contentDocument;
-          if(doc&&doc.body){
-            // sync theme if needed - handled by URL/hash render
-          }
-        }catch(e){}
-      });
-    }
-  }
 }
 function ordersPanel(st){
   if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
@@ -355,10 +342,9 @@ function designPanel(st){
 function refreshDesignerFrame(){
   const f=$('#designerFrame');
   if(!f)return;
-  // Reassign src to force reload with latest store data
   const src=f.getAttribute('src');
   f.setAttribute('src','about:blank');
-  setTimeout(()=>f.setAttribute('src',src),50);
+  setTimeout(()=>f.setAttribute('src',src+'?_r='+Date.now()),50);
 }
 async function updateStoreSections(sections,msg){
   const st=curS();if(!st)return;
@@ -368,6 +354,57 @@ async function updateStoreSections(sections,msg){
   renderDash();
   setTimeout(()=>refreshDesignerFrame(),200);
   if(msg)toast(msg);
+}
+
+/* ---------- CUSTOM CODE PANEL ---------- */
+let CODE_TAB='css';
+function codePanel(st){
+  const css=st.custom_css||'';
+  const html=st.custom_html||'';
+  const js=st.custom_js||'';
+  const desc={
+    css:'Styles are injected into the &lt;head&gt; of your storefront. Use selectors like <code>.sf-hero</code>, <code>.card</code>, <code>.price</code>.',
+    html:'HTML is added just above the footer of your storefront. Great for announcements, trust badges, or a custom banner.',
+    js:'JavaScript runs after the page loads. Use it to add scroll effects, popups, or connect to external services.'
+  }[CODE_TAB];
+  const val=CODE_TAB==='css'?css:CODE_TAB==='html'?html:js;
+  return `<div class="editor-wrap">
+    <div class="editor-help">
+      <b>⚠️ Advanced area.</b> Custom code lets you extend your store beyond the built-in themes and sections. Broken code can break your storefront — so test in the preview first, then save.
+    </div>
+    <div class="editor-tabs" id="codeTabs">
+      <button type="button" class="editor-tab ${CODE_TAB==='css'?'on':''}" data-code-tab="css">🎨 Custom CSS</button>
+      <button type="button" class="editor-tab ${CODE_TAB==='html'?'on':''}" data-code-tab="html">📄 Custom HTML</button>
+      <button type="button" class="editor-tab ${CODE_TAB==='js'?'on':''}" data-code-tab="js">⚡ Custom JavaScript</button>
+    </div>
+    <div class="editor-head">
+      <h3>${CODE_TAB==='css'?'Custom CSS':CODE_TAB==='html'?'Custom HTML':'Custom JavaScript'}</h3>
+      <p class="fine">${desc}</p>
+    </div>
+    <textarea class="code-editor" id="codeEditor" spellcheck="false" placeholder="${CODE_TAB==='css'?'/* Example:\n.sf-hero h1 { font-size: 4rem; }\n.card:hover { transform: translateY(-10px); }\n*/':CODE_TAB==='html'?'<!-- Example:\n<div style=\\"text-align:center;padding:20px\\">\n  <p>🎉 Free delivery on orders over Rs. 3000</p>\n</div>\n-->':'// Example:\nconsole.log(\\"Store loaded\\");'}">${esc(val)}</textarea>
+    <div class="editor-actions">
+      <button type="button" class="btn primary" data-act="savecode">💾 Save code</button>
+      <button type="button" class="btn" data-act="previewcode">🔍 Refresh preview</button>
+      <button type="button" class="btn danger" data-act="clearcode">🗑️ Clear all</button>
+      <span class="status" id="codeStatus"></span>
+    </div>
+    <div class="editor-preview">
+      <div class="editor-preview-head">
+        <i></i><i></i><i></i>
+        <span>Live preview — ${esc(st.slug)}.easybuy.pk</span>
+      </div>
+      <div class="editor-preview-body">
+        <iframe id="codeFrame" src="#/s/${esc(st.slug)}" title="Store preview"></iframe>
+      </div>
+    </div>
+  </div>`;
+}
+function refreshCodeFrame(){
+  const f=$('#codeFrame');
+  if(!f)return;
+  const src=f.getAttribute('src').split('&_r=')[0].split('?_r=')[0];
+  f.setAttribute('src','about:blank');
+  setTimeout(()=>f.setAttribute('src',src+'?_r='+Date.now()),50);
 }
 
 function settingsPanel(st){
@@ -395,17 +432,15 @@ async function uploadImage(blob){
 }
 
 /* ============================================================
-   DESIGNER EVENTS — attached to document, capture phase
+   DESIGNER EVENTS
    ============================================================ */
 let designerBound=false;
 function bindDesigner(){
   if(designerBound)return;
   designerBound=true;
   document.addEventListener('click',async e=>{
-    // Only handle when we're inside dashboard
     if(!$('#v-dashboard')||$('#v-dashboard').hidden)return;
 
-    // Theme picker
     const th=e.target.closest('[data-set-theme]');
     if(th){
       e.preventDefault();
@@ -421,13 +456,7 @@ function bindDesigner(){
       });
       return;
     }
-    // Add section
-    if(e.target.closest('[data-act="addsection"]')){
-      e.preventDefault();
-      openAddSectionModal();
-      return;
-    }
-    // Toggle
+    if(e.target.closest('[data-act="addsection"]')){e.preventDefault();openAddSectionModal();return}
     const tg=e.target.closest('[data-stoggle]');
     if(tg){
       e.preventDefault();
@@ -439,7 +468,6 @@ function bindDesigner(){
       await busy(null,()=>updateStoreSections(sections,s.enabled?'Section shown':'Section hidden'));
       return;
     }
-    // Move up
     const up=e.target.closest('[data-sup]');
     if(up){
       e.preventDefault();
@@ -451,7 +479,6 @@ function bindDesigner(){
       await busy(null,()=>updateStoreSections(sections,'Section moved up'));
       return;
     }
-    // Move down
     const dn=e.target.closest('[data-sdown]');
     if(dn){
       e.preventDefault();
@@ -463,7 +490,6 @@ function bindDesigner(){
       await busy(null,()=>updateStoreSections(sections,'Section moved down'));
       return;
     }
-    // Delete
     const dl=e.target.closest('[data-sdel]');
     if(dl){
       e.preventDefault();
@@ -473,13 +499,7 @@ function bindDesigner(){
       await busy(null,()=>updateStoreSections(sections,'Section removed'));
       return;
     }
-    // Save theme quick action
-    if(e.target.closest('[data-act="savetheme"]')){
-      e.preventDefault();
-      toast('Store saved & published');
-      refreshDesignerFrame();
-      return;
-    }
+    if(e.target.closest('[data-act="savetheme"]')){e.preventDefault();toast('Store saved & published');refreshDesignerFrame();return}
   },true);
 }
 
@@ -505,9 +525,7 @@ function openAddSectionModal(){
   document.body.insertAdjacentHTML('beforeend',html);
   const modal=document.getElementById('addSectionModal');
   modal.addEventListener('click',async ev=>{
-    if(ev.target.id==='addSectionModal'||ev.target.closest('[data-close-add]')){
-      modal.remove();return;
-    }
+    if(ev.target.id==='addSectionModal'||ev.target.closest('[data-close-add]')){modal.remove();return}
     const opt=ev.target.closest('[data-add-type]');
     if(opt){
       const type=opt.dataset.addType;
@@ -520,11 +538,75 @@ function openAddSectionModal(){
   });
 }
 
+/* ============================================================
+   CUSTOM CODE EVENTS
+   ============================================================ */
+let codeBound=false;
+function bindCode(){
+  if(codeBound)return;
+  codeBound=true;
+  document.addEventListener('click',async e=>{
+    if(!$('#v-dashboard')||$('#v-dashboard').hidden)return;
+
+    const ct=e.target.closest('[data-code-tab]');
+    if(ct){
+      e.preventDefault();
+      CODE_TAB=ct.dataset.codeTab;
+      renderDash();
+      return;
+    }
+    if(e.target.closest('[data-act="savecode"]')){
+      e.preventDefault();
+      const st=curS();if(!st)return;
+      const editor=$('#codeEditor');if(!editor)return;
+      const val=editor.value;
+      const field=CODE_TAB==='css'?'custom_css':CODE_TAB==='html'?'custom_html':'custom_js';
+      const status=$('#codeStatus');
+      if(status){status.textContent='Saving...';status.className='status'}
+      await busy(e.target.closest('[data-act="savecode"]'),async()=>{
+        const upd={};upd[field]=val;
+        const r=await sb.from('stores').update(upd).eq('id',st.id).select().single();
+        if(r.error)throw r.error;
+        MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+        if(status){status.textContent='✅ Saved successfully';status.className='status saved'}
+        toast('Custom '+CODE_TAB.toUpperCase()+' saved');
+        setTimeout(()=>refreshCodeFrame(),200);
+      });
+      return;
+    }
+    if(e.target.closest('[data-act="previewcode"]')){
+      e.preventDefault();
+      refreshCodeFrame();
+      toast('Preview refreshed');
+      return;
+    }
+    if(e.target.closest('[data-act="clearcode"]')){
+      e.preventDefault();
+      if(!confirm('Clear ALL custom CSS, HTML, and JavaScript for this store?'))return;
+      const st=curS();if(!st)return;
+      await busy(e.target.closest('[data-act="clearcode"]'),async()=>{
+        const r=await sb.from('stores').update({custom_css:'',custom_html:'',custom_js:''}).eq('id',st.id).select().single();
+        if(r.error)throw r.error;
+        MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+        renderDash();
+        setTimeout(()=>refreshCodeFrame(),200);
+        toast('All custom code cleared');
+      });
+      return;
+    }
+  },true);
+  document.addEventListener('input',e=>{
+    if(e.target.id==='codeEditor'){
+      const status=$('#codeStatus');
+      if(status){status.textContent='Unsaved changes';status.className='status'}
+    }
+  });
+}
+
 /* ---------- dashboard bindings ---------- */
 function bindDash(){
   const el=$('#v-dashboard');
   el.addEventListener('click',async e=>{
-    // Let designer handle its own
     if(e.target.closest('[data-set-theme]')||
        e.target.closest('[data-stoggle]')||
        e.target.closest('[data-sup]')||
@@ -532,6 +614,10 @@ function bindDash(){
        e.target.closest('[data-sdel]')||
        e.target.closest('[data-act="addsection"]')||
        e.target.closest('[data-act="savetheme"]')||
+       e.target.closest('[data-code-tab]')||
+       e.target.closest('[data-act="savecode"]')||
+       e.target.closest('[data-act="previewcode"]')||
+       e.target.closest('[data-act="clearcode"]')||
        e.target.closest('[data-close-add]')||
        e.target.closest('[data-add-type]')||
        e.target.id==='addSectionModal'){
@@ -731,7 +817,6 @@ function renderSection(sec,st){
   }
   return '';
 }
-
 function renderProductsSection(st,products){
   return `<section class="sf-section"><div class="wrap">
     <h2>${products.length?'Our products':'No products yet'}</h2>
@@ -797,6 +882,39 @@ async function renderStore(slug){
     <button class="btn" data-sf="closedone">Continue shopping</button></div></div>
   <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div id="pmBody"></div></div></div>`;
   syncCheckout();drawGrid();drawCart();
+
+  /* ----- Inject custom code ----- */
+  // 1. Custom CSS
+  const oldCSS=document.getElementById('storeCustomCSS');
+  if(oldCSS)oldCSS.remove();
+  if(st.custom_css){
+    const styleEl=document.createElement('style');
+    styleEl.id='storeCustomCSS';
+    styleEl.textContent=st.custom_css;
+    document.head.appendChild(styleEl);
+  }
+  // 2. Custom HTML (before footer)
+  const oldHTML=document.getElementById('storeCustomHTML');
+  if(oldHTML)oldHTML.remove();
+  if(st.custom_html){
+    const block=document.createElement('div');
+    block.id='storeCustomHTML';
+    block.innerHTML=st.custom_html;
+    const footer=el.querySelector('.sf-foot');
+    if(footer)footer.parentNode.insertBefore(block,footer);
+    else el.appendChild(block);
+  }
+  // 3. Custom JS
+  const oldJS=document.getElementById('storeCustomJS');
+  if(oldJS)oldJS.remove();
+  if(st.custom_js){
+    try{
+      const script=document.createElement('script');
+      script.id='storeCustomJS';
+      script.textContent=st.custom_js;
+      document.body.appendChild(script);
+    }catch(err){console.error('Custom JS error:',err)}
+  }
 }
 function drawGrid(){
   const st=SF.store,q=SF.q.toLowerCase();
@@ -1087,7 +1205,7 @@ addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preven
 
 /* ---------- start ---------- */
 (async function init(){
-  initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();
+  initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();bindCode();
   if(!configured)$('#setup').hidden=false;
   else{
     try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
