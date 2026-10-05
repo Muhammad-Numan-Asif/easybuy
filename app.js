@@ -1504,7 +1504,7 @@ addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preven
 
 /* ---------- start ---------- */
 (async function init(){
-  initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();bindCode();
+  initBuilder();bindDash();bindStore();bindDesigner();bindCode();
   await loadCustomerSession();
   if(!configured){const s=$('#setup'); if(s)s.hidden=false;}
   else{
