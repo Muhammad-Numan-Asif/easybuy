@@ -1,3 +1,8 @@
+/* ============================================================
+   EASYBUY APP — STAGE 6
+   With Email notifications + Customer accounts + Abandoned carts + 20 themes
+   ============================================================ */
+
 /* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -6,7 +11,31 @@ const uid=()=>Math.random().toString(36).slice(2,8);
 const CATS={Pets:'🐾',Fashion:'👗',Electronics:'🎧',Home:'🏠',Beauty:'💄',Other:'🛍️'};
 const COLORS=['#0a7d55','#1f6f9f','#d8452e','#7a4dd8','#c98a00','#c2185b','#26332e'];
 const STATUSES=['New','Confirmed','Shipped','Delivered','Cancelled'];
-const THEMES=['classic','minimal','bold','elegant'];
+
+/* ── 20 THEMES ── */
+const THEMES=[
+  {id:'classic',name:'Classic',desc:'Green · Pakistani favourite',vibe:'warm'},
+  {id:'minimal',name:'Minimal',desc:'White & black · clean'},
+  {id:'bold',name:'Bold',desc:'Colorful · vibrant'},
+  {id:'elegant',name:'Elegant',desc:'Dark & gold · luxury'},
+  {id:'nordic',name:'Nordic',desc:'Soft blues · calm'},
+  {id:'sunset',name:'Sunset',desc:'Warm gradient · vibrant'},
+  {id:'ocean',name:'Ocean',desc:'Blue gradient · fresh'},
+  {id:'forest',name:'Forest',desc:'Deep greens · natural'},
+  {id:'mono',name:'Mono',desc:'Pure black & white'},
+  {id:'rose',name:'Rose',desc:'Soft pinks · feminine'},
+  {id:'lavender',name:'Lavender',desc:'Purple gradient · soft'},
+  {id:'cocoa',name:'Cocoa',desc:'Brown tones · cozy'},
+  {id:'mint',name:'Mint',desc:'Fresh greens · airy'},
+  {id:'coral',name:'Coral',desc:'Pink-red gradient · bold'},
+  {id:'slate',name:'Slate',desc:'Grey tones · modern'},
+  {id:'gold',name:'Gold',desc:'Dark luxury · premium'},
+  {id:'cyan',name:'Cyan',desc:'Bright blue · tech'},
+  {id:'amber',name:'Amber',desc:'Orange · warm'},
+  {id:'crimson',name:'Crimson',desc:'Deep red · passionate'},
+  {id:'sage',name:'Sage',desc:'Light green · organic'}
+];
+
 const SECTION_TYPES={
   hero:{name:'Hero',icon:'🎯',desc:'Big headline with CTA'},
   about:{name:'About',icon:'ℹ️',desc:'Tell your story'},
@@ -33,11 +62,353 @@ const configured=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&!/^PASTE/.test(CFG.
 const sb=configured?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 let USER=null;
 
-/* ---------- router ---------- */
+/* ============================================================
+   EMAIL HELPER
+   ============================================================ */
+async function sendEmail({to,subject,html,reply_to}){
+  if(!sb)return false;
+  try{
+    const r=await sb.functions.invoke('send-email',{body:{to,subject,html,reply_to}});
+    if(r.error)throw r.error;
+    return true;
+  }catch(e){
+    console.error('Email send failed:',e);
+    return false;
+  }
+}
+
+function emailTemplate(title,body,cta){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#f4f8f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f8f7;padding:40px 20px">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(12,40,34,.08)">
+<tr><td style="background:linear-gradient(135deg,#07352a,#00a878);padding:28px 32px">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-.02em">🛍️ EasyBuy</td>
+    <td align="right" style="color:rgba(255,255,255,.85);font-size:12px">${new Date().toLocaleDateString('en-PK',{day:'numeric',month:'short',year:'numeric'})}</td>
+  </tr></table>
+</td></tr>
+<tr><td style="padding:36px 32px">
+  <h1 style="margin:0 0 16px;font-size:22px;font-weight:750;color:#101817;letter-spacing:-.02em">${title}</h1>
+  <div style="color:#4b5563;font-size:15px;line-height:1.7">${body}</div>
+  ${cta?`<div style="margin-top:28px"><a href="${cta.url}" style="display:inline-block;padding:14px 26px;background:linear-gradient(135deg,#13bb8b,#008d68);color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px">${cta.text}</a></div>`:''}
+</td></tr>
+<tr><td style="padding:20px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#89918e;font-size:12px;text-align:center">
+  Powered by EasyBuy · Pakistan's free store builder
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+/* ============================================================
+   CUSTOMER ACCOUNTS
+   ============================================================ */
+let CUSTOMER=null;
+const CUST_SESSION_KEY='eb.customer';
+
+async function loadCustomerSession(){
+  try{
+    const saved=JSON.parse(lsGet(CUST_SESSION_KEY)||'null');
+    if(!saved)return null;
+    const r=await sb.auth.getSession();
+    if(r.data.session?.user){
+      CUSTOMER=r.data.session.user;
+      return CUSTOMER;
+    }
+  }catch(e){}
+  return null;
+}
+
+async function customerSignUp(email,password,name,phone){
+  const r=await sb.auth.signUp({email,password,options:{data:{full_name:name,phone}}});
+  if(r.error)throw r.error;
+  CUSTOMER=r.data.user;
+  if(r.data.session){
+    lsSet(CUST_SESSION_KEY,JSON.stringify({email,name,phone}));
+  }
+  return r.data;
+}
+
+async function customerSignIn(email,password){
+  const r=await sb.auth.signInWithPassword({email,password});
+  if(r.error)throw r.error;
+  CUSTOMER=r.data.user;
+  lsSet(CUST_SESSION_KEY,JSON.stringify({email:CUSTOMER.email}));
+  return r.data;
+}
+
+async function customerSignOut(){
+  try{await sb.auth.signOut()}catch(e){}
+  CUSTOMER=null;
+  lsDel(CUST_SESSION_KEY);
+}
+
+async function linkCustomerToStore(storeId,name,phone,email){
+  if(!CUSTOMER)return null;
+  try{
+    const {data:existing}=await sb.from('customers').select('id').eq('store_id',storeId).eq('user_id',CUSTOMER.id).maybeSingle();
+    if(existing)return existing;
+    const {data}=await sb.from('customers').insert({
+      store_id:storeId,
+      user_id:CUSTOMER.id,
+      name:name||CUSTOMER.user_metadata?.full_name||'Customer',
+      email:email||CUSTOMER.email,
+      phone:phone||CUSTOMER.user_metadata?.phone||'',
+      city:'',
+      order_count:0,
+      total_spent:0
+    }).select().single();
+    return data;
+  }catch(e){console.error(e);return null}
+}
+
+function openCustomerAuthModal(mode='login'){
+  const old=document.getElementById('custAuthModal');if(old)old.remove();
+  const su=mode==='signup';
+  const html=`<div class="modal open cust-modal" id="custAuthModal" style="z-index:200">
+    <div class="box">
+      <div class="sheet-head"><h2>${su?'Create your account':'Welcome back'}</h2><button type="button" class="btn small" data-cust-close>Close</button></div>
+      <p>${su?'Save your details for faster checkout and order history.':'Log in to see your order history.'}</p>
+      <form id="custAuthForm" data-mode="${mode}">
+        ${su?`<label>Your name<input id="custName" required maxlength="60" placeholder="Full name"></label>`:''}
+        <label>Email<input id="custEmail" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+        ${su?`<label>Phone<input id="custPhone" inputmode="tel" required placeholder="03XXXXXXXXX"></label>`:''}
+        <label>Password${su?' (6+ characters)':''}<input id="custPass" type="password" minlength="6" required autocomplete="${su?'new-password':'current-password'}"></label>
+        <button type="submit" class="btn primary big">${su?'Create account':'Log in'}</button>
+        <div class="switch-line">${su?'Already have an account? <a data-cust-switch="login">Log in</a>':'New here? <a data-cust-switch="signup">Create an account</a>'}</div>
+        <p class="fine" id="custMsg" style="text-align:center"></p>
+      </form>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  const modal=document.getElementById('custAuthModal');
+  modal.addEventListener('click',async ev=>{
+    if(ev.target.id==='custAuthModal'||ev.target.closest('[data-cust-close]')){modal.remove();return}
+    const sw=ev.target.closest('[data-cust-switch]');
+    if(sw){modal.remove();openCustomerAuthModal(sw.dataset.custSwitch);return}
+  });
+  modal.querySelector('#custAuthForm').addEventListener('submit',async ev=>{
+    ev.preventDefault();
+    const btn=ev.submitter;
+    const m=ev.target.dataset.mode;
+    await busy(btn,async()=>{
+      const email=$('#custEmail').value.trim();
+      const pass=$('#custPass').value;
+      if(m==='signup'){
+        const name=$('#custName').value.trim();
+        const phone=$('#custPhone').value.trim();
+        const r=await customerSignUp(email,pass,name,phone);
+        if(!r.session){$('#custMsg').textContent='Check your email to confirm, then log in.';return}
+        if(SF.store)await linkCustomerToStore(SF.store.id,name,phone,email);
+        toast('Account created!');
+      }else{
+        await customerSignIn(email,pass);
+        toast('Logged in');
+      }
+      modal.remove();
+      if(SF.store)drawCustomerBar();
+      renderAccountIfNeeded();
+    });
+  });
+}
+
+function drawCustomerBar(){
+  const bar=$('#custBar');
+  if(!bar)return;
+  const existing=bar.querySelector('.cust-auth-bar');
+  if(existing)existing.remove();
+  const bar2=document.createElement('div');
+  bar2.className='cust-auth-bar';
+  bar2.innerHTML=CUSTOMER
+    ?`<button class="cust-btn" data-cust="account">👤 ${esc(CUSTOMER.user_metadata?.full_name||CUSTOMER.email?.split('@')[0]||'Account')}</button>
+      <button class="cust-btn" data-cust="logout">Log out</button>`
+    :`<button class="cust-btn" data-cust="login">Log in</button>
+      <button class="cust-btn" data-cust="signup">Sign up</button>`;
+  bar.appendChild(bar2);
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-cust]');if(!b)return;
+  const k=b.dataset.cust;
+  if(k==='login')openCustomerAuthModal('login');
+  if(k==='signup')openCustomerAuthModal('signup');
+  if(k==='logout'){customerSignOut().then(()=>{drawCustomerBar();toast('Logged out')})}
+  if(k==='account')location.hash='#/account';
+});
+
+/* ============================================================
+   ACCOUNT PAGE
+   ============================================================ */
+async function renderAccount(){
+  const el=$('#v-account');
+  if(!el)return;
+  if(!CUSTOMER){
+    el.innerHTML=`<div class="account-wrap"><div class="empty"><h2>Please log in</h2><p>Log in to see your orders and account details.</p><button class="btn primary" data-cust="login">Log in</button></div></div>`;
+    return;
+  }
+  el.innerHTML='<div class="account-wrap"><div class="empty">Loading your account...</div></div>';
+  let orders=[];
+  try{
+    const r=await sb.from('orders').select('*').eq('customer_user_id',CUSTOMER.id).order('created_at',{ascending:false}).limit(50);
+    if(!r.error)orders=r.data||[];
+  }catch(e){}
+  const name=CUSTOMER.user_metadata?.full_name||CUSTOMER.email?.split('@')[0]||'Customer';
+  el.innerHTML=`<div class="account-wrap">
+    <div class="account-header">
+      <div class="account-avatar">👤</div>
+      <div style="flex:1">
+        <h1>${esc(name)}</h1>
+        <p>${esc(CUSTOMER.email)}</p>
+      </div>
+      <button class="cust-btn" data-cust="logout" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff">Log out</button>
+    </div>
+    <div class="account-tabs">
+      <button class="account-tab on" data-atab="orders">My orders (${orders.length})</button>
+      <button class="account-tab" data-atab="details">Account details</button>
+    </div>
+    <div id="accountPanel">${renderAccountOrders(orders)}</div>
+  </div>`;
+  el.querySelectorAll('[data-atab]').forEach(t=>t.addEventListener('click',()=>{
+    el.querySelectorAll('.account-tab').forEach(x=>x.classList.toggle('on',x===t));
+    const p=t.dataset.atab;
+    $('#accountPanel').innerHTML=p==='orders'?renderAccountOrders(orders):renderAccountDetails();
+  }));
+}
+
+function renderAccountOrders(orders){
+  if(!orders.length)return `<div class="empty"><h3>No orders yet</h3><p>When you place an order, it will appear here.</p></div>`;
+  return `<div class="account-orders">${orders.map(o=>`
+    <article class="account-order">
+      <div class="account-order-head">
+        <strong>Order #${o.order_no}</strong>
+        <span class="pill st-${o.status}">${o.status}</span>
+        <time>${new Date(o.created_at).toLocaleString('en-PK',{dateStyle:'medium',timeStyle:'short'})}</time>
+      </div>
+      <ul style="margin:8px 0;padding-left:18px;font-size:13px;color:var(--muted)">
+        ${(o.items||[]).map(i=>`<li>${esc(i.name)}${i.variant?' ('+esc(i.variant)+')':''} x${i.qty}</li>`).join('')}
+      </ul>
+      <div class="account-order-foot">
+        <strong>${money(o.total)}</strong>
+        <span style="color:var(--muted);font-size:12px">${o.payment_method==='cod'?'Cash on Delivery':esc(payLabel(o.payment_method||'cod'))}</span>
+      </div>
+    </article>`).join('')}</div>`;
+}
+
+function renderAccountDetails(){
+  return `<form class="panel-box" id="custDetailsForm">
+    <label>Full name<input id="cdName" value="${esc(CUSTOMER.user_metadata?.full_name||'')}" maxlength="60"></label>
+    <label>Email<input value="${esc(CUSTOMER.email||'')}" disabled></label>
+    <label>Phone<input id="cdPhone" value="${esc(CUSTOMER.user_metadata?.phone||'')}" inputmode="tel"></label>
+    <button class="btn primary" type="submit">Save details</button>
+  </form>`;
+}
+
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='custDetailsForm')return;
+  e.preventDefault();
+  await busy(e.submitter,async()=>{
+    const name=$('#cdName').value.trim();
+    const phone=$('#cdPhone').value.trim();
+    const r=await sb.auth.updateUser({data:{full_name:name,phone}});
+    if(r.error)throw r.error;
+    CUSTOMER=r.data.user;
+    toast('Details saved');
+  });
+});
+
+function renderAccountIfNeeded(){
+  if(location.hash==='#/account')renderAccount();
+}
+
+/* ============================================================
+   ABANDONED CART
+   ============================================================ */
+function getCartToken(storeId){
+  let t=lsGet('eb.cartToken.'+storeId);
+  if(!t){t=uid()+uid();lsSet('eb.cartToken.'+storeId,t)}
+  return t;
+}
+
+async function saveAbandonedCart(){
+  if(!SF.store)return;
+  const c=validCart();
+  if(!c.length)return;
+  const token=getCartToken(SF.store.id);
+  const items=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);return{product_id:i.id,name:p?.name||'',qty:i.qty,variant:i.variant||'',price:p?.price||0}});
+  const total=c.reduce((a,i)=>{const p=SF.products.find(x=>x.id===i.id);return a+(unitPrice(p,i.variant)*i.qty)},0);
+  const email=(CUSTOMER&&CUSTOMER.email)||'';
+  const name=(CUSTOMER&&CUSTOMER.user_metadata?.full_name)||'';
+  const phone=(CUSTOMER&&CUSTOMER.user_metadata?.phone)||'';
+  try{
+    await sb.from('abandoned_carts').upsert({
+      store_id:SF.store.id,
+      cart_token:token,
+      customer_name:name,
+      customer_email:email,
+      customer_phone:phone,
+      items,
+      total,
+      recovered:false,
+      last_activity:new Date().toISOString()
+    },{onConflict:'cart_token'});
+  }catch(e){console.error(e)}
+}
+
+/* ============================================================
+   EMAIL NOTIFICATIONS
+   ============================================================ */
+
+/* Send order confirmation to seller */
+async function emailSellerNewOrder(order,store){
+  if(!store.email_notifications_enabled)return;
+  const to=store.notification_email;
+  if(!to)return;
+  const items=(order.items||[]).map(i=>`<li>${esc(i.name)}${i.variant?' ('+esc(i.variant)+')':''} × ${i.qty}</li>`).join('');
+  const html=emailTemplate(
+    `🎉 New order #${order.order_no}`,
+    `<p><b>${esc(order.customer_name)}</b> just placed an order on <b>${esc(store.name)}</b>.</p>
+     <div style="padding:16px;background:#f6f7f7;border-radius:12px;margin:16px 0">
+       <div style="font-weight:700;margin-bottom:8px">Items</div>
+       <ul style="margin:0;padding-left:20px">${items}</ul>
+       <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb">
+         <div><b>Total:</b> ${money(order.total)} (${order.payment_method==='cod'?'Cash on Delivery':payLabel(order.payment_method||'cod')})</div>
+       </div>
+     </div>
+     <div style="padding:16px;background:#eef7f3;border-radius:12px;margin:16px 0">
+       <div style="font-weight:700;margin-bottom:8px">Delivery details</div>
+       <div>${esc(order.customer_name)} · ${esc(order.customer_phone)}</div>
+       <div>${esc(order.address)}, ${esc(order.city)}</div>
+     </div>`,
+    {url:`https://wa.me/${waNum(order.customer_phone)}?text=${encodeURIComponent('Assalam o Alaikum '+order.customer_name+', this is '+store.name+' about your order #'+order.order_no+'.')}`,text:'Message customer on WhatsApp'}
+  );
+  await sendEmail({to,subject:`New order #${order.order_no} — ${money(order.total)}`,html});
+}
+
+/* Send order confirmation to customer */
+async function emailCustomerOrderConfirm(order,store,toEmail){
+  if(!toEmail)return;
+  const items=(order.items||[]).map(i=>`<li>${esc(i.name)}${i.variant?' ('+esc(i.variant)+')':''} × ${i.qty}</li>`).join('');
+  const html=emailTemplate(
+    `Order confirmed — #${order.order_no}`,
+    `<p>Thank you <b>${esc(order.customer_name)}</b>! Your order from <b>${esc(store.name)}</b> is confirmed.</p>
+     <div style="padding:16px;background:#f6f7f7;border-radius:12px;margin:16px 0">
+       <ul style="margin:0;padding-left:20px">${items}</ul>
+       <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb"><b>Total:</b> ${money(order.total)}</div>
+     </div>
+     <p>${order.payment_method==='cod'?'Please keep '+money(order.total)+' ready — you pay the rider in cash when the parcel arrives.':'We will confirm your payment shortly.'}</p>
+     <p style="color:#6b7280;font-size:13px">Seller will contact you on WhatsApp for delivery updates.</p>`,
+    {url:`https://wa.me/${waNum(store.whatsapp)}?text=${encodeURIComponent('Hi, this is '+order.customer_name+' about order #'+order.order_no)}`,text:'Message seller on WhatsApp'}
+  );
+  await sendEmail({to:toEmail,subject:`Order #${order.order_no} confirmed — ${store.name}`,html});
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
 function route(){
   const cleanHash=(location.hash||'#/').split('?')[0];
   const parts=cleanHash.split('/');
-  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':parts[1]==='track'?'track':'home';
+  let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':parts[1]==='track'?'track':parts[1]==='account'?'account':'home';
   if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
   $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
   $('#siteHeader').hidden=v==='store';
@@ -48,12 +419,15 @@ function route(){
   if(v==='dashboard')loadDash();
   if(v==='store')renderStore(parts[2]);
   if(v==='track')renderTrack();
+  if(v==='account')renderAccount();
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',()=>route());
 function paintNav(){$('#navAuth').textContent=USER?'Log out':'Log in'}
 
-/* ---------- auth ---------- */
+/* ============================================================
+   AUTH (seller)
+   ============================================================ */
 const AUTH={mode:'signup',note:''};
 function renderLogin(){
   const su=AUTH.mode==='signup',pend=readPending();
@@ -137,7 +511,6 @@ function startHeroRotator(){
     words[heroI].classList.add('active');
   },2600);
 }
-
 function initDarkTabs(){
   const tabs=$$('.dark-tab');
   if(!tabs.length)return;
@@ -147,7 +520,6 @@ function initDarkTabs(){
     $$('.dark-tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===key));
   }));
 }
-
 let statsDone=false;
 function initStatsCounter(){
   if(statsDone)return;
@@ -176,7 +548,6 @@ function initStatsCounter(){
   },{threshold:0.25});
   io.observe(section);
 }
-
 function initFaqAccordion(){
   const items=$$('.faq-item');
   items.forEach(item=>{
@@ -185,20 +556,7 @@ function initFaqAccordion(){
     });
   });
 }
-
-/* ---------- home ---------- */
 const B={cat:'Pets',color:COLORS[0]};
-
-function initFeatureTabs(){
-  const wrap=$('#featureTabs'); if(!wrap)return;
-  wrap.addEventListener('click',e=>{
-    const b=e.target.closest('[data-tab]'); if(!b)return;
-    const key=b.dataset.tab;
-    $$('#featureTabs .tab').forEach(x=>x.classList.toggle('on',x===b));
-    $$('#tabPanels .tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===key));
-  });
-}
-
 function initBuilder(){
   const catBox=$('#bCats'),colorBox=$('#bColors');
   if(!catBox||!colorBox)return;
@@ -231,7 +589,6 @@ function initBuilder(){
   });
   preview();
 }
-
 function preview(){
   const nameEl=$('#bName');
   if(!nameEl)return;
@@ -246,7 +603,6 @@ function preview(){
     pg.innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
   }
 }
-
 async function renderHome(){
   const yr=$('#yr'); if(yr)yr.textContent=new Date().getFullYear();
   startHeroRotator();
@@ -255,7 +611,9 @@ async function renderHome(){
   initFaqAccordion();
 }
 
-/* ---------- dashboard ---------- */
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
 const MY={stores:[],active:null,products:[],orders:[]};
 const D={tab:'orders',form:null,file:null};
 const curS=()=>MY.stores.find(s=>s.id===MY.active);
@@ -288,18 +646,19 @@ function renderDash(){
       <div class="side-nav">
         <button class="${D.tab==='orders'?'active':''}" data-tab="orders">📦 Orders ${fresh?`<span class="mini-status">${fresh}</span>`:''}</button>
         <button class="${D.tab==='products'?'active':''}" data-tab="products">🛍️ Products</button>
-        <button class="${D.tab==='design'?'active':''}" data-tab="design">🎨 Design</button>
+        <button class="${D.tab==='design'?'active':''}" data-tab="design">🎨 Themes</button>
         <button class="${D.tab==='code'?'active':''}" data-tab="code">⚡ Custom Code</button>
+        <button class="${D.tab==='email'?'active':''}" data-tab="email">📧 Email & Carts</button>
         <button class="${D.tab==='advanced'?'active':''}" data-tab="advanced">📊 Analytics & tools</button>
         <button class="${D.tab==='settings'?'active':''}" data-tab="settings">⚙️ Settings</button>
       </div>
       <div class="side-help">Share your store link, receive COD orders, and manage everything from this dashboard.</div>
     </aside>
     <div class="dash-main">
-      <div class="mobile-dash-nav">${['orders','products','design','code','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
-      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='design'?'Design your store':D.tab==='code'?'Custom code editor':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
-      ${(D.tab==='design'||D.tab==='code')?'':`<div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>`}
-      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='code'?codePanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
+      <div class="mobile-dash-nav">${['orders','products','design','code','email','advanced','settings'].map(t=>`<button class="btn small ${D.tab===t?'primary':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+      <div class="dash-top"><div><h1>${D.tab==='orders'?'Orders':D.tab==='products'?'Products':D.tab==='design'?'Themes':D.tab==='code'?'Custom code editor':D.tab==='email'?'Email & Carts':D.tab==='advanced'?'Analytics & tools':'Store settings'}</h1><p>Manage <b>${esc(st.name)}</b> from one place.</p></div><select id="storeSel" style="max-width:220px;margin:0">${MY.stores.map(s=>`<option value="${s.id}"${s.id===st.id?' selected':''}>${esc(s.name)}</option>`).join('')}</select><div class="dash-actions"><a class="btn" href="#/s/${esc(st.slug)}">View store</a><button class="btn" data-act="copy">Copy link</button><button class="btn" data-act="refresh">Refresh</button></div></div>
+      ${(D.tab==='design'||D.tab==='code'||D.tab==='email')?'':`<div class="metric-grid"><div class="metric"><span>Products</span><b>${active}</b></div><div class="metric"><span>Total orders</span><b>${MY.orders.length}</b></div><div class="metric"><span>New orders</span><b>${fresh}</b></div><div class="metric"><span>Order value</span><b>${money(rev)}</b></div></div>`}
+      ${D.tab==='orders'?ordersPanel(st):D.tab==='products'?productsPanel(st):D.tab==='design'?designPanel(st):D.tab==='code'?codePanel(st):D.tab==='email'?emailPanel(st):D.tab==='advanced'?advancedPanel(st):settingsPanel(st)}
     </div>
   </div>`;
 
@@ -362,7 +721,7 @@ function productsPanel(st){
   return form+list;
 }
 
-/* ---------- DESIGN PANEL ---------- */
+/* ---------- DESIGN PANEL — 20 Themes ---------- */
 function getSections(st){
   if(Array.isArray(st.sections)&&st.sections.length)return JSON.parse(JSON.stringify(st.sections));
   return [
@@ -379,13 +738,15 @@ function designPanel(st){
     <div class="designer-grid">
       <div class="designer-side">
         <div class="designer-card">
-          <h3>Store theme</h3>
-          <div class="theme-picker">
+          <div class="row-head" style="margin-bottom:14px"><h3 style="margin:0">Theme library</h3><span class="fine" style="margin:0">${THEMES.length} themes</span></div>
+          <div class="theme-library" style="grid-template-columns:1fr 1fr;gap:10px">
             ${THEMES.map(t=>`
-              <button type="button" class="theme-opt ${t} ${theme===t?'on':''}" data-set-theme="${t}">
-                ${t.charAt(0).toUpperCase()+t.slice(1)}
-                <div class="swatch-row"><i></i><i></i></div>
-              </button>`).join('')}
+              <div class="theme-card tp-${t.id} ${theme===t.id?'on':''}" data-set-theme="${t.id}" title="${esc(t.desc)}">
+                <div class="theme-preview" style="height:70px"></div>
+                <div class="theme-meta" style="padding:8px 10px">
+                  <span class="theme-name" style="font-size:11px">${esc(t.name)}</span>
+                </div>
+              </div>`).join('')}
           </div>
         </div>
         <div class="designer-card">
@@ -451,6 +812,88 @@ async function updateStoreSections(sections,msg){
   if(msg)toast(msg);
 }
 
+/* ---------- EMAIL & CARTS PANEL ---------- */
+async function emailPanel(st){
+  let carts=[],logs=[];
+  try{
+    const [a,b]=await Promise.all([
+      sb.from('abandoned_carts').select('*').eq('store_id',st.id).eq('recovered',false).order('last_activity',{ascending:false}).limit(30),
+      sb.from('email_log').select('*').eq('store_id',st.id).order('created_at',{ascending:false}).limit(30)
+    ]);
+    carts=a.error?[]:a.data||[];
+    logs=b.error?[]:b.data||[];
+  }catch(e){}
+  return `<div class="designer-wrap">
+    <div class="designer-card" style="margin-bottom:20px">
+      <div class="row-head"><h2>📧 Email notifications</h2></div>
+      <p class="fine" style="margin:0 0 16px">Get instant email alerts when customers place orders. Powered by Resend (3,000 free emails/month).</p>
+      <form id="emailSettingsForm">
+        <label>Notification email
+          <input id="notifEmail" type="email" placeholder="you@example.com" value="${esc(st.notification_email||'')}">
+        </label>
+        <div class="email-toggle">
+          <div class="email-toggle-label">Order notifications
+            <span class="email-toggle-hint">Get email when a customer places an order</span>
+          </div>
+          <input id="notifEnabled" type="checkbox" ${st.email_notifications_enabled!==false?'checked':''} style="width:auto;margin:0">
+        </div>
+        <div class="email-toggle">
+          <div class="email-toggle-label">Abandoned cart recovery
+            <span class="email-toggle-hint">Auto-email customers who left items in cart</span>
+          </div>
+          <input id="cartEnabled" type="checkbox" ${st.abandoned_cart_enabled!==false?'checked':''} style="width:auto;margin:0">
+        </div>
+        <label>Recovery email delay (minutes)
+          <input id="cartDelay" type="number" min="15" max="1440" value="${st.abandoned_cart_delay_minutes||60}">
+        </label>
+        <button class="btn primary" type="submit">Save settings</button>
+      </form>
+    </div>
+
+    <div class="designer-card" style="margin-bottom:20px">
+      <div class="row-head"><h2>🛒 Abandoned carts (${carts.length})</h2></div>
+      ${carts.length?`<div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Items</th><th>Total</th><th>Last activity</th><th></th></tr></thead><tbody>
+        ${carts.map(c=>`<tr>
+          <td>${esc(c.customer_name||'Guest')}<br><small style="color:var(--muted)">${esc(c.customer_phone||c.customer_email||'—')}</small></td>
+          <td>${(c.items||[]).slice(0,2).map(i=>esc(i.name)).join(', ')}${(c.items||[]).length>2?' +'+((c.items||[]).length-2):''}</td>
+          <td><b>${money(c.total)}</b></td>
+          <td><small>${new Date(c.last_activity).toLocaleString('en-PK',{dateStyle:'short',timeStyle:'short'})}</small></td>
+          <td><a class="btn small" target="_blank" href="https://wa.me/${waNum(c.customer_phone)}?text=${encodeURIComponent('Hi '+c.customer_name+', you left items in your cart at '+st.name+'. Complete your order here: ')}">WhatsApp</a></td>
+        </tr>`).join('')}
+      </tbody></table></div>`:'<div class="empty"><p>No abandoned carts yet.</p></div>'}
+    </div>
+
+    <div class="designer-card">
+      <div class="row-head"><h2>📨 Email log</h2></div>
+      ${logs.length?`<div class="table-wrap"><table class="mini-table"><thead><tr><th>To</th><th>Template</th><th>Status</th><th>Sent</th></tr></thead><tbody>
+        ${logs.map(l=>`<tr>
+          <td>${esc(l.customer_email||l.customer_phone||'—')}</td>
+          <td>${esc(l.template||'order')}</td>
+          <td><span class="mini-status">${esc(l.status||'sent')}</span></td>
+          <td><small>${new Date(l.sent_at).toLocaleString('en-PK',{dateStyle:'short',timeStyle:'short'})}</small></td>
+        </tr>`).join('')}
+      </tbody></table></div>`:'<div class="empty"><p>No emails sent yet.</p></div>'}
+    </div>
+  </div>`;
+}
+
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='emailSettingsForm')return;
+  e.preventDefault();
+  await busy(e.submitter,async()=>{
+    const st=curS();
+    const r=await sb.from('stores').update({
+      notification_email:$('#notifEmail').value.trim(),
+      email_notifications_enabled:$('#notifEnabled').checked,
+      abandoned_cart_enabled:$('#cartEnabled').checked,
+      abandoned_cart_delay_minutes:Math.max(15,parseInt($('#cartDelay').value,10)||60)
+    }).eq('id',st.id).select().single();
+    if(r.error)throw r.error;
+    MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
+    toast('Email settings saved');
+  });
+});
+
 /* ---------- CUSTOM CODE PANEL ---------- */
 let CODE_TAB='css';
 function codePanel(st){
@@ -458,14 +901,14 @@ function codePanel(st){
   const html=st.custom_html||'';
   const js=st.custom_js||'';
   const desc={
-    css:'Styles are injected into the &lt;head&gt; of your storefront. Use selectors like <code>.sf-hero</code>, <code>.card</code>, <code>.price</code>.',
-    html:'HTML is added just above the footer of your storefront. Great for announcements, trust badges, or a custom banner.',
-    js:'JavaScript runs after the page loads. Use it to add scroll effects, popups, or connect to external services.'
+    css:'Styles are injected into the &lt;head&gt; of your storefront.',
+    html:'HTML is added just above the footer of your storefront.',
+    js:'JavaScript runs after the page loads.'
   }[CODE_TAB];
   const val=CODE_TAB==='css'?css:CODE_TAB==='html'?html:js;
   return `<div class="editor-wrap">
     <div class="editor-help">
-      <b>⚠️ Advanced area.</b> Custom code lets you extend your store beyond the built-in themes and sections. Broken code can break your storefront — so test in the preview first, then save.
+      <b>⚠️ Advanced area.</b> Custom code lets you extend your store beyond the built-in themes and sections.
     </div>
     <div class="editor-tabs" id="codeTabs">
       <button type="button" class="editor-tab ${CODE_TAB==='css'?'on':''}" data-code-tab="css">🎨 Custom CSS</button>
@@ -476,7 +919,7 @@ function codePanel(st){
       <h3>${CODE_TAB==='css'?'Custom CSS':CODE_TAB==='html'?'Custom HTML':'Custom JavaScript'}</h3>
       <p class="fine">${desc}</p>
     </div>
-    <textarea class="code-editor" id="codeEditor" spellcheck="false" placeholder="${CODE_TAB==='css'?'/* Example:\n.sf-hero h1 { font-size: 4rem; }\n.card:hover { transform: translateY(-10px); }\n*/':CODE_TAB==='html'?'<!-- Example:\n<div style=\\"text-align:center;padding:20px\\">\n  <p>🎉 Free delivery on orders over Rs. 3000</p>\n</div>\n-->':'// Example:\nconsole.log(\\"Store loaded\\");'}">${esc(val)}</textarea>
+    <textarea class="code-editor" id="codeEditor" spellcheck="false">${esc(val)}</textarea>
     <div class="editor-actions">
       <button type="button" class="btn primary" data-act="savecode">💾 Save code</button>
       <button type="button" class="btn" data-act="previewcode">🔍 Refresh preview</button>
@@ -484,10 +927,7 @@ function codePanel(st){
       <span class="status" id="codeStatus"></span>
     </div>
     <div class="editor-preview">
-      <div class="editor-preview-head">
-        <i></i><i></i><i></i>
-        <span>Live preview — ${esc(st.slug)}.easybuy.pk</span>
-      </div>
+      <div class="editor-preview-head"><i></i><i></i><i></i><span>Live preview — ${esc(st.slug)}.easybuy.pk</span></div>
       <div class="editor-preview-body">
         <iframe id="codeFrame" src="#/s/${esc(st.slug)}" title="Store preview"></iframe>
       </div>
@@ -542,7 +982,7 @@ function bindDesigner(){
       e.preventDefault();
       const st=curS();if(!st)return;
       const theme=th.dataset.setTheme;
-      await busy(th,async()=>{
+      await busy(null,async()=>{
         const r=await sb.from('stores').update({theme}).eq('id',st.id).select().single();
         if(r.error)throw r.error;
         MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
@@ -602,21 +1042,13 @@ function openAddSectionModal(){
   const st=curS();if(!st)return;
   const existing=getSections(st).map(s=>s.type);
   const available=Object.entries(SECTION_TYPES).filter(([k])=>!existing.includes(k));
-  const old=document.getElementById('addSectionModal');
-  if(old)old.remove();
-  const html=`
-    <div class="modal open" id="addSectionModal" style="z-index:200">
-      <div class="box" style="max-width:520px">
-        <div class="sheet-head"><h2>Add a section</h2><button type="button" class="btn small" data-close-add>Close</button></div>
-        ${available.length?`<div class="add-section-grid">
-          ${available.map(([k,v])=>`<button type="button" class="section-add-opt" data-add-type="${k}">
-            <div class="ico">${v.icon}</div>
-            <b>${v.name}</b>
-            <small>${v.desc}</small>
-          </button>`).join('')}
-        </div>`:'<p class="fine">All available sections have already been added.</p>'}
-      </div>
-    </div>`;
+  const old=document.getElementById('addSectionModal');if(old)old.remove();
+  const html=`<div class="modal open" id="addSectionModal" style="z-index:200">
+    <div class="box" style="max-width:520px">
+      <div class="sheet-head"><h2>Add a section</h2><button type="button" class="btn small" data-close-add>Close</button></div>
+      ${available.length?`<div class="add-section-grid">${available.map(([k,v])=>`<button type="button" class="section-add-opt" data-add-type="${k}"><div class="ico">${v.icon}</div><b>${v.name}</b><small>${v.desc}</small></button>`).join('')}</div>`:'<p class="fine">All available sections have already been added.</p>'}
+    </div>
+  </div>`;
   document.body.insertAdjacentHTML('beforeend',html);
   const modal=document.getElementById('addSectionModal');
   modal.addEventListener('click',async ev=>{
@@ -644,12 +1076,7 @@ function bindCode(){
     if(!$('#v-dashboard')||$('#v-dashboard').hidden)return;
 
     const ct=e.target.closest('[data-code-tab]');
-    if(ct){
-      e.preventDefault();
-      CODE_TAB=ct.dataset.codeTab;
-      renderDash();
-      return;
-    }
+    if(ct){e.preventDefault();CODE_TAB=ct.dataset.codeTab;renderDash();return}
     if(e.target.closest('[data-act="savecode"]')){
       e.preventDefault();
       const st=curS();if(!st)return;
@@ -669,12 +1096,7 @@ function bindCode(){
       });
       return;
     }
-    if(e.target.closest('[data-act="previewcode"]')){
-      e.preventDefault();
-      refreshCodeFrame();
-      toast('Preview refreshed');
-      return;
-    }
+    if(e.target.closest('[data-act="previewcode"]')){e.preventDefault();refreshCodeFrame();toast('Preview refreshed');return}
     if(e.target.closest('[data-act="clearcode"]')){
       e.preventDefault();
       if(!confirm('Clear ALL custom CSS, HTML, and JavaScript for this store?'))return;
@@ -701,25 +1123,10 @@ function bindCode(){
 function bindDash(){
   const el=$('#v-dashboard');
   el.addEventListener('click',async e=>{
-    if(e.target.closest('[data-set-theme]')||
-       e.target.closest('[data-stoggle]')||
-       e.target.closest('[data-sup]')||
-       e.target.closest('[data-sdown]')||
-       e.target.closest('[data-sdel]')||
-       e.target.closest('[data-act="addsection"]')||
-       e.target.closest('[data-act="savetheme"]')||
-       e.target.closest('[data-code-tab]')||
-       e.target.closest('[data-act="savecode"]')||
-       e.target.closest('[data-act="previewcode"]')||
-       e.target.closest('[data-act="clearcode"]')||
-       e.target.closest('[data-close-add]')||
-       e.target.closest('[data-add-type]')||
-       e.target.id==='addSectionModal'){
-      return;
-    }
+    if(e.target.closest('[data-set-theme]')||e.target.closest('[data-stoggle]')||e.target.closest('[data-sup]')||e.target.closest('[data-sdown]')||e.target.closest('[data-sdel]')||e.target.closest('[data-act="addsection"]')||e.target.closest('[data-act="savetheme"]')||e.target.closest('[data-code-tab]')||e.target.closest('[data-act="savecode"]')||e.target.closest('[data-act="previewcode"]')||e.target.closest('[data-act="clearcode"]')||e.target.closest('[data-close-add]')||e.target.closest('[data-add-type]')||e.target.id==='addSectionModal'){return}
     const st=curS();
     const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
-    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop')?.scrollIntoView();$('#bName')?.focus({preventScroll:true})},50);return}
+    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();return}
     if(!st)return;
     const ed=e.target.closest('[data-edit]');if(ed){D.form={...MY.products.find(x=>x.id===ed.dataset.edit)};D.file=null;renderDash();$('#pForm')&&$('#pForm').scrollIntoView();return}
     const dl=e.target.closest('[data-del]');
@@ -794,7 +1201,7 @@ function fmtCur(n,cur){
 let SF={store:null,products:[],reviews:[],q:'',cat:'',quote:null,country:''};
 const cartKey=()=>'eb.cart.'+SF.store.id;
 function getCart(){try{const c=JSON.parse(lsGet(cartKey())||'[]');return Array.isArray(c)?c:[]}catch(e){return[]}}
-function setCart(c){lsSet(cartKey(),JSON.stringify(c))}
+function setCart(c){lsSet(cartKey(),JSON.stringify(c));saveAbandonedCart()}
 const PAY={cod:'Cash on Delivery',bank:'Bank transfer',easypaisa:'Easypaisa',jazzcash:'JazzCash'};
 const payLabel=m=>PAY[m]||m;
 const varLabel=v=>[v&&v.name,v&&v.option].map(x=>String(x||'').trim()).filter(Boolean).join(' / ');
@@ -807,8 +1214,7 @@ function unitPrice(p,variant){
 }
 const homeCountry=st=>st.home_country||'PK';
 function marketList(st){
-  const h={country:homeCountry(st),currency:st.currency||'PKR',rate:1,shipping:st.shipping_fee||0,free_min:st.free_shipping_min||0,
-    payment_methods:(Array.isArray(st.payment_methods)&&st.payment_methods.length?st.payment_methods:['cod']),home:true};
+  const h={country:homeCountry(st),currency:st.currency||'PKR',rate:1,shipping:st.shipping_fee||0,free_min:st.free_shipping_min||0,payment_methods:(Array.isArray(st.payment_methods)&&st.payment_methods.length?st.payment_methods:['cod']),home:true};
   return [h,...(Array.isArray(st.markets)?st.markets:[])];
 }
 function curMarket(){const l=marketList(SF.store);return l.find(m=>m.country===SF.country)||l[0]}
@@ -834,7 +1240,7 @@ function addToCart(pid,variant){
   setCart(c);drawCart();return true;
 }
 
-/* ---------- store section renderers ---------- */
+/* ---------- section renderers ---------- */
 function renderSection(sec,st){
   if(!sec.enabled)return '';
   const t=sec.type;
@@ -843,88 +1249,30 @@ function renderSection(sec,st){
     return `<section class="sf-hero"><div class="wrap"><h1>${esc(st.name)}</h1><p>${esc(tag)}</p><div class="sf-trust" id="sfTrust"></div></div></section>`;
   }
   if(t==='about'){
-    return `<section class="sf-section alt"><div class="wrap">
-      <div class="sf-about-grid">
-        <div class="sf-about-copy">
-          <h2>About ${esc(st.name)}</h2>
-          <p>${esc(st.description||('We are '+st.name+', a '+st.category.toLowerCase()+' store based in '+countryName(homeCountry(st))+'. We take pride in offering quality products with fast Cash on Delivery across the country.'))}</p>
-        </div>
-        <div style="background:linear-gradient(135deg,#eef5f2,#d9e8e2);border-radius:20px;aspect-ratio:4/3;display:grid;place-items:center;font-size:80px">${CATS[st.category]||'🛍️'}</div>
-      </div>
-    </div></section>`;
+    return `<section class="sf-section alt"><div class="wrap"><div class="sf-about-grid"><div class="sf-about-copy"><h2>About ${esc(st.name)}</h2><p>${esc(st.description||('We are '+st.name+', a '+st.category.toLowerCase()+' store based in '+countryName(homeCountry(st))+'. We take pride in offering quality products with fast Cash on Delivery across the country.'))}</p></div><div style="background:linear-gradient(135deg,#eef5f2,#d9e8e2);border-radius:20px;aspect-ratio:4/3;display:grid;place-items:center;font-size:80px">${CATS[st.category]||'🛍️'}</div></div></div></section>`;
   }
   if(t==='contact'){
-    return `<section class="sf-section"><div class="wrap">
-      <h2>Get in touch</h2>
-      <p class="lead-center">We usually reply within an hour on WhatsApp.</p>
-      <div class="sf-contact-grid">
-        <div>
-          ${st.whatsapp?`<div class="sf-contact-item"><div class="sf-contact-ico">💬</div><div><b>WhatsApp</b><span>+${esc(waNum(st.whatsapp))}</span></div></div>`:''}
-          <div class="sf-contact-item"><div class="sf-contact-ico">📦</div><div><b>Delivery</b><span>Cash on Delivery across ${esc(countryName(homeCountry(st)))}</span></div></div>
-          <div class="sf-contact-item"><div class="sf-contact-ico">⏰</div><div><b>Hours</b><span>Open 24/7 for online orders</span></div></div>
-        </div>
-        <div class="sf-contact-form">
-          <h3 style="margin-bottom:12px">Send us a message</h3>
-          <label>Your name<input type="text" placeholder="Your name"></label>
-          <label>Your phone<input type="tel" placeholder="03XXXXXXXXX"></label>
-          <label>Message<textarea placeholder="I'd like to ask about..."></textarea></label>
-          ${st.whatsapp?`<a class="btn primary big" target="_blank" rel="noopener" href="https://wa.me/${waNum(st.whatsapp)}?text=${encodeURIComponent('Assalam o Alaikum, I am interested in your store '+st.name)}">Send on WhatsApp</a>`:'<button class="btn primary big" disabled>WhatsApp not configured</button>'}
-        </div>
-      </div>
-    </div></section>`;
+    return `<section class="sf-section"><div class="wrap"><h2>Get in touch</h2><p class="lead-center">We usually reply within an hour on WhatsApp.</p><div class="sf-contact-grid"><div>${st.whatsapp?`<div class="sf-contact-item"><div class="sf-contact-ico">💬</div><div><b>WhatsApp</b><span>+${esc(waNum(st.whatsapp))}</span></div></div>`:''}<div class="sf-contact-item"><div class="sf-contact-ico">📦</div><div><b>Delivery</b><span>Cash on Delivery across ${esc(countryName(homeCountry(st)))}</span></div></div><div class="sf-contact-item"><div class="sf-contact-ico">⏰</div><div><b>Hours</b><span>Open 24/7 for online orders</span></div></div></div><div class="sf-contact-form"><h3 style="margin-bottom:12px">Send us a message</h3><label>Your name<input type="text" placeholder="Your name"></label><label>Your phone<input type="tel" placeholder="03XXXXXXXXX"></label><label>Message<textarea placeholder="I'd like to ask about..."></textarea></label>${st.whatsapp?`<a class="btn primary big" target="_blank" rel="noopener" href="https://wa.me/${waNum(st.whatsapp)}?text=${encodeURIComponent('Assalam o Alaikum, I am interested in your store '+st.name)}">Send on WhatsApp</a>`:''}</div></div></div></section>`;
   }
   if(t==='faq'){
-    return `<section class="sf-section alt"><div class="wrap">
-      <h2>Frequently asked questions</h2>
-      <p class="lead-center">Everything you need to know before ordering.</p>
-      <div class="sf-faq">
-        <details open><summary>How do I place an order?</summary><p>Browse our products, add them to your cart, and fill in your delivery details at checkout. It takes under a minute.</p></details>
-        <details><summary>Do you offer Cash on Delivery?</summary><p>Yes! You pay the courier in cash when your parcel arrives. No advance payment needed.</p></details>
-        <details><summary>How long does delivery take?</summary><p>Within 2-4 working days for most cities across Pakistan.</p></details>
-        <details><summary>Can I return or exchange?</summary><p>Yes — contact us on WhatsApp within 3 days of receiving your order.</p></details>
-        <details><summary>How can I track my order?</summary><p>Save your order number — you can track it any time from the <a href="#/track" style="color:var(--brand)">track order page</a>.</p></details>
-      </div>
-    </div></section>`;
+    return `<section class="sf-section alt"><div class="wrap"><h2>Frequently asked questions</h2><p class="lead-center">Everything you need to know before ordering.</p><div class="sf-faq"><details open><summary>How do I place an order?</summary><p>Browse our products, add them to your cart, and fill in your delivery details at checkout. It takes under a minute.</p></details><details><summary>Do you offer Cash on Delivery?</summary><p>Yes! You pay the courier in cash when your parcel arrives. No advance payment needed.</p></details><details><summary>How long does delivery take?</summary><p>Within 2-4 working days for most cities across Pakistan.</p></details><details><summary>Can I return or exchange?</summary><p>Yes — contact us on WhatsApp within 3 days of receiving your order.</p></details><details><summary>How can I track my order?</summary><p>Save your order number — you can track it any time from the <a href="#/track" style="color:var(--brand)">track order page</a>.</p></details></div></div></section>`;
   }
   if(t==='testimonials'){
-    return `<section class="sf-section"><div class="wrap">
-      <h2>What our customers say</h2>
-      <p class="lead-center">Real reviews from real buyers.</p>
-      <div class="sf-testimonials">
-        <div class="sf-testi"><div class="stars">★★★★★</div><p>"Excellent quality and super fast delivery. Ordered on Monday, got it Wednesday. Will buy again!"</p><b>Ayesha K.</b><small>Karachi</small></div>
-        <div class="sf-testi"><div class="stars">★★★★★</div><p>"Cash on delivery made it so easy — no risk. Product was exactly as described. Highly recommended."</p><b>Bilal A.</b><small>Lahore</small></div>
-        <div class="sf-testi"><div class="stars">★★★★☆</div><p>"Great communication on WhatsApp. They answered all my questions quickly. Happy customer!"</p><b>Fatima S.</b><small>Islamabad</small></div>
-      </div>
-    </div></section>`;
+    return `<section class="sf-section"><div class="wrap"><h2>What our customers say</h2><p class="lead-center">Real reviews from real buyers.</p><div class="sf-testimonials"><div class="sf-testi"><div class="stars">★★★★★</div><p>"Excellent quality and super fast delivery. Ordered on Monday, got it Wednesday. Will buy again!"</p><b>Ayesha K.</b><small>Karachi</small></div><div class="sf-testi"><div class="stars">★★★★★</div><p>"Cash on delivery made it so easy — no risk. Product was exactly as described. Highly recommended."</p><b>Bilal A.</b><small>Lahore</small></div><div class="sf-testi"><div class="stars">★★★★☆</div><p>"Great communication on WhatsApp. They answered all my questions quickly. Happy customer!"</p><b>Fatima S.</b><small>Islamabad</small></div></div></div></section>`;
   }
   if(t==='newsletter'){
-    return `<section class="sf-section"><div class="wrap">
-      <div class="sf-newsletter">
-        <h2>Get updates on new arrivals</h2>
-        <p>Subscribe and be the first to know about sales and new products.</p>
-        <form onsubmit="event.preventDefault();this.reset();alert('Thank you for subscribing!')">
-          <input type="email" placeholder="your@email.com" required>
-          <button type="submit">Subscribe</button>
-        </form>
-      </div>
-    </div></section>`;
+    return `<section class="sf-section"><div class="wrap"><div class="sf-newsletter"><h2>Get updates on new arrivals</h2><p>Subscribe and be the first to know about sales and new products.</p><form onsubmit="event.preventDefault();this.reset();alert('Thank you for subscribing!')"><input type="email" placeholder="your@email.com" required><button type="submit">Subscribe</button></form></div></div></section>`;
   }
   return '';
 }
 function renderProductsSection(st,products){
-  return `<section class="sf-section"><div class="wrap">
-    <h2>${products.length?'Our products':'No products yet'}</h2>
-    <input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products" style="margin:24px auto;display:block">
-    <div class="sf-tools" style="margin:14px 0 22px"><div class="cat-filter" id="sfCats"></div></div>
-    <div class="grid" id="sfGrid"></div>
-  </div></section>`;
+  return `<section class="sf-section"><div class="wrap"><h2>${products.length?'Our products':'No products yet'}</h2><input class="search" id="sfSearch" type="search" placeholder="Search products" aria-label="Search products" style="margin:24px auto;display:block"><div class="sf-tools" style="margin:14px 0 22px"><div class="cat-filter" id="sfCats"></div></div><div class="grid" id="sfGrid"></div></div></section>`;
 }
 
 async function renderStore(slug){
   slug=(slug||'').split('?')[0];
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
-
   const oldCSS=document.getElementById('storeCustomCSS');if(oldCSS)oldCSS.remove();
   const oldHTML=document.getElementById('storeCustomHTML');if(oldHTML)oldHTML.remove();
   const oldJS=document.getElementById('storeCustomJS');if(oldJS)oldJS.remove();
@@ -954,13 +1302,12 @@ async function renderStore(slug){
 
   el.innerHTML=`
   <div class="eb-bar">You are viewing ${esc(st.name)} on EasyBuy.<a href="#/dashboard">Seller dashboard</a><a href="#/">EasyBuy home</a></div>
-  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country" style="width:auto;margin:0">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart" style="background:var(--accent);color:var(--on-accent)">Cart <span id="sfCount">0</span></button></div></div></header>
+  <header class="sf-head"><div class="wrap sf-nav"><strong class="sf-logo">${esc(st.name)}</strong><div class="sf-right" id="custBar">${(st.markets||[]).length?`<select id="sfCountry" aria-label="Ship to country" style="width:auto;margin:0">${marketList(st).map(m=>`<option value="${esc(m.country)}"${m.country===SF.country?' selected':''}>${esc(countryName(m.country))} (${esc(m.currency)})</option>`).join('')}</select>`:''}<button class="btn accent" data-sf="opencart" style="background:var(--accent);color:var(--on-accent)">Cart <span id="sfCount">0</span></button></div></div></header>
   <div class="sf-sections">${bodyHtml}</div>
   <footer class="sf-foot"><div class="wrap">Store powered by EasyBuy.</div></footer>
   <div class="drawer" id="sfDrawer"><aside class="sheet" role="dialog" aria-label="Your cart">
-    <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart" aria-label="Close cart">Close</button></div>
-    <div id="sfItems"></div>
-    <div id="sfQuote"></div>
+    <div class="sheet-head"><h2>Your cart</h2><button class="btn small" data-sf="closecart">Close</button></div>
+    <div id="sfItems"></div><div id="sfQuote"></div>
     <form id="sfForm" style="margin-top:18px">
       <h3 style="font-size:19px;margin-bottom:10px">Delivery details</h3>
       <label>Full name<input id="cName" autocomplete="name" required></label>
@@ -968,8 +1315,8 @@ async function renderStore(slug){
       <p class="fine" id="cShipTo"></p>
       <label>City<input id="cCity" autocomplete="address-level2" required></label>
       <label>Full address<input id="cAddr" autocomplete="street-address" required></label>
-      <div id="cIntl" hidden><label>State / province<input id="cState" autocomplete="address-level1"></label><label>Postal code<input id="cPostal" autocomplete="postal-code"></label></div>
-      <label>Coupon code (optional)<input id="cCoupon" autocomplete="off" placeholder="e.g. SAVE10"></label>
+      <div id="cIntl" hidden><label>State / province<input id="cState"></label><label>Postal code<input id="cPostal"></label></div>
+      <label>Coupon code (optional)<input id="cCoupon" placeholder="e.g. SAVE10"></label>
       <p class="fine" id="couponMsg"></p>
       <label>Payment method<select id="cPay"></select></label>
       <div id="payInfo"></div>
@@ -977,34 +1324,13 @@ async function renderStore(slug){
       <a class="fine" href="#/track" style="display:block;margin-top:12px">Track an existing order</a>
     </form>
   </aside></div>
-  <div class="modal" id="sfDone"><div class="box"><h2 id="doneTitle">Order placed</h2><p id="doneText"></p>
-    <a class="btn primary" id="doneWa" target="_blank" rel="noopener" href="#">Send order on WhatsApp</a>
-    <button class="btn" data-sf="closedone">Continue shopping</button></div></div>
+  <div class="modal" id="sfDone"><div class="box"><h2 id="doneTitle">Order placed</h2><p id="doneText"></p><a class="btn primary" id="doneWa" target="_blank" href="#">Send order on WhatsApp</a><button class="btn" data-sf="closedone">Continue shopping</button></div></div>
   <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div id="pmBody"></div></div></div>`;
-  syncCheckout();drawGrid();drawCart();
+  syncCheckout();drawGrid();drawCart();drawCustomerBar();
 
-  if(st.custom_css){
-    const styleEl=document.createElement('style');
-    styleEl.id='storeCustomCSS';
-    styleEl.textContent=st.custom_css;
-    document.head.appendChild(styleEl);
-  }
-  if(st.custom_html){
-    const block=document.createElement('div');
-    block.id='storeCustomHTML';
-    block.innerHTML=st.custom_html;
-    const footer=el.querySelector('.sf-foot');
-    if(footer)footer.parentNode.insertBefore(block,footer);
-    else el.appendChild(block);
-  }
-  if(st.custom_js){
-    try{
-      const script=document.createElement('script');
-      script.id='storeCustomJS';
-      script.textContent=st.custom_js;
-      document.body.appendChild(script);
-    }catch(err){console.error('Custom JS error:',err)}
-  }
+  if(st.custom_css){const s=document.createElement('style');s.id='storeCustomCSS';s.textContent=st.custom_css;document.head.appendChild(s);}
+  if(st.custom_html){const b=document.createElement('div');b.id='storeCustomHTML';b.innerHTML=st.custom_html;const f=el.querySelector('.sf-foot');if(f)f.parentNode.insertBefore(b,f);else el.appendChild(b);}
+  if(st.custom_js){try{const sc=document.createElement('script');sc.id='storeCustomJS';sc.textContent=st.custom_js;document.body.appendChild(sc);}catch(err){}}
 }
 
 function drawGrid(){
@@ -1018,41 +1344,14 @@ function drawGrid(){
   grid.innerHTML=list.map(p=>{
     const vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id);
     const badge=isSold(p)?'<span class="chipbadge st-Cancelled">Sold out</span>':lowStock(p)?`<span class="chipbadge st-New">Only ${p.stock} left</span>`:'';
-    const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>'
-      :vs.length?`<button class="btn accent" data-product="${p.id}" style="background:var(--accent);color:var(--on-accent)">Choose option</button>`
-      :`<button class="btn accent" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)">Add to cart</button>`;
-    return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button>
-    <div class="body">${badge}${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3>
-    ${rt?`<div class="rating" style="color:#f5a623;font-size:12px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
-    <div class="desc">${esc(p.description||'')}</div>
-    <div class="price">${priceHtml(p)}</div>${btn}</div></article>`}).join('')
-    ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
+    const btn=isSold(p)?'<button class="btn accent" disabled>Sold out</button>':vs.length?`<button class="btn accent" data-product="${p.id}" style="background:var(--accent);color:var(--on-accent)">Choose option</button>`:`<button class="btn accent" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)">Add to cart</button>`;
+    return `<article class="card"><button class="pic" data-product="${p.id}" style="border:0;padding:0;cursor:pointer;color:inherit">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:(CATS[st.category]||'🛍️')}</button><div class="body">${badge}${p.category?`<span class="cat">${esc(p.category)}</span>`:''}<h3>${esc(p.name)}</h3>${rt?`<div class="rating" style="color:#f5a623;font-size:12px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}<div class="desc">${esc(p.description||'')}</div><div class="price">${priceHtml(p)}</div>${btn}</div></article>`}).join('')||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3></div>`;
 }
 
 function openProduct(p){
   const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
-  const note=isSold(p)?'<p class="stock-note out" style="color:var(--danger)">Sold out</p>':lowStock(p)?`<p class="stock-note low" style="color:var(--warning)">Only ${p.stock} left</p>`:'';
-  $('#pmBody').innerHTML=`
-  <div class="product-modal-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div class="product-modal-pic" style="background:#f3f5f4;border-radius:18px;display:grid;place-items:center;min-height:280px;font-size:60px;overflow:hidden">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:(CATS[st.category]||'🛍️')}</div>
-  <div>${p.old_price>p.price?'<span class="pill st-New">SALE</span>':''}
-    <h2 style="margin-top:10px">${esc(p.name)}</h2>
-    ${rt?`<div class="rating" style="color:#f5a623;font-size:13px">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}
-    <div class="price" id="pmPrice">${priceHtml(p)}</div>
-    ${vs.length?`<label style="margin-top:10px">Choose an option<select id="pmVariant"><option value="">Select...</option>${vs.map(v=>`<option value="${esc(varLabel(v))}">${esc(varLabel(v))}${v.price>0&&v.price!==p.price?' ('+money(v.price)+')':''}</option>`).join('')}</select></label>`:''}
-    ${note}
-    <p class="fine" style="font-size:14px;line-height:1.7">${esc(p.description||'No description available.')}</p>
-    <button class="btn accent big buy" id="pmAdd" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)"${isSold(p)?' disabled':''}>${isSold(p)?'Sold out':'Add to cart'}</button></div></div>
-  <div class="reviews-box" style="margin-top:24px;padding-top:18px;border-top:1px solid var(--line-soft)"><h3>Reviews</h3>
-    ${mine.length?mine.map(r=>`<div class="rv" style="padding:12px 0;border-bottom:1px solid var(--line-soft)"><b>${esc(r.customer_name)}</b> <span class="rating" style="color:#f5a623">${stars(r.rating)}</span><p style="margin:6px 0 0;color:var(--muted);font-size:13px">${esc(r.body||'')}</p></div>`).join(''):'<p class="fine">No reviews yet.</p>'}
-    <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Write a review</summary>
-    <form id="rvForm" data-pid="${p.id}" style="margin-top:12px">
-      <label>Your name<input id="rvName" required maxlength="60"></label>
-      <label>Phone used on your order<input id="rvPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label>
-      <label>Rating<select id="rvRating"><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option></select></label>
-      <label>Comment (optional)<textarea id="rvBody" maxlength="500"></textarea></label>
-      <button class="btn accent" type="submit" style="background:var(--accent);color:var(--on-accent)">Send review</button>
-      <p class="fine">Only customers who ordered this product can review it. The seller approves reviews before they show.</p>
-    </form></details></div>`;
+  const note=isSold(p)?'<p style="color:var(--danger)">Sold out</p>':lowStock(p)?`<p style="color:var(--warning)">Only ${p.stock} left</p>`:'';
+  $('#pmBody').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div style="background:#f3f5f4;border-radius:18px;display:grid;place-items:center;min-height:280px;font-size:60px;overflow:hidden">${p.image_url?`<img src="${esc(p.image_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:(CATS[st.category]||'🛍️')}</div><div>${p.old_price>p.price?'<span class="pill st-New">SALE</span>':''}<h2 style="margin-top:10px">${esc(p.name)}</h2>${rt?`<div style="color:#f5a623">${stars(rt.avg)} <small>${rt.avg.toFixed(1)} (${rt.n})</small></div>`:''}<div class="price" id="pmPrice">${priceHtml(p)}</div>${vs.length?`<label style="margin-top:10px">Choose an option<select id="pmVariant"><option value="">Select...</option>${vs.map(v=>`<option value="${esc(varLabel(v))}">${esc(varLabel(v))}</option>`).join('')}</select></label>`:''}${note}<p class="fine">${esc(p.description||'No description available.')}</p><button class="btn accent big" id="pmAdd" data-add="${p.id}" style="background:var(--accent);color:var(--on-accent)"${isSold(p)?' disabled':''}>${isSold(p)?'Sold out':'Add to cart'}</button></div></div>`;
   $('#sfProduct').classList.add('open');
 }
 
@@ -1063,7 +1362,7 @@ function drawCart(){
   if(!c.length){$('#sfItems').innerHTML='<div class="empty">Your cart is empty.</div>';$('#sfQuote').innerHTML='';$('#sfForm').hidden=true;return}
   $('#sfForm').hidden=false;
   $('#sfItems').innerHTML=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);
-    return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty" style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one" style="border:0;background:transparent;cursor:pointer">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one" style="border:0;background:transparent;cursor:pointer">+</button></div></div>`}).join('');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1">+</button></div></div>`}).join('');
   refreshQuote();
 }
 
@@ -1077,16 +1376,13 @@ function refreshQuote(){
     const r=await sb.rpc('quote_cart',{p_store:SF.store.id,p_items:c.map(cartItem),p_coupon:code,p_country:SF.country});
     let q;
     if(r.error){
-      if((r.error.code==='PGRST202'||/could not find|schema cache/i.test(r.error.message||''))&&!curMarket().home){box.innerHTML='<p class="fine">International checkout is not enabled yet. Please choose the home country.</p>';SF.quote=null;return}
-      if(r.error.code==='PGRST202'||/could not find|schema cache/i.test(r.error.message||'')){
-        const sub=c.reduce((a,i)=>a+unitPrice(SF.products.find(p=>p.id===i.id),i.variant)*i.qty,0),s=SF.store;
-        const ship=s.free_shipping_min>0&&sub>=s.free_shipping_min?0:(s.shipping_fee||0);
-        q={subtotal:sub,discount:0,shipping:ship,total:sub+ship,coupon_msg:''};
-      }else{box.innerHTML='<p class="fine" style="color:var(--coral)">'+esc(r.error.message)+'</p>';SF.quote=null;if(msg)msg.textContent='';return}
+      const sub=c.reduce((a,i)=>a+unitPrice(SF.products.find(p=>p.id===i.id),i.variant)*i.qty,0),s=SF.store;
+      const ship=s.free_shipping_min>0&&sub>=s.free_shipping_min?0:(s.shipping_fee||0);
+      q={subtotal:sub,discount:0,shipping:ship,total:sub+ship,coupon_msg:''};
     }else q=r.data[0];
     SF.quote=q;
     const F=n=>fmtCur(n,q.currency||curMarket().currency);
-    box.innerHTML=`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div class="qrow" style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div class="qrow tot" style="display:flex;justify-content:space-between;padding:12px;margin-bottom:6px;font-weight:700;background:#eef7f3;border-radius:10px"><span>Total</span><span>${F(q.total)}</span></div>`;
+    box.innerHTML=`<div style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Subtotal</span><span>${F(q.subtotal)}</span></div>${q.discount>0?`<div style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Discount</span><span>−${F(q.discount)}</span></div>`:''}<div style="display:flex;justify-content:space-between;padding:8px 12px;margin-bottom:6px;border:1px solid var(--line);border-radius:10px"><span>Shipping</span><span>${q.shipping>0?F(q.shipping):'Free'}</span></div><div style="display:flex;justify-content:space-between;padding:12px;margin-bottom:6px;font-weight:700;background:#eef7f3;border-radius:10px"><span>Total</span><span>${F(q.total)}</span></div>`;
     if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
   },250);
 }
@@ -1095,9 +1391,9 @@ function payInfo(){
   const st=SF.store,sel=$('#cPay'),box=$('#payInfo'),btn=$('#placeBtn');if(!sel||!box)return;
   const m=sel.value;let t='';
   if(m==='bank')t=st.bank_details?'Bank details:\n'+st.bank_details:'The seller will share bank details on WhatsApp.';
-  if(m==='easypaisa')t=st.easypaisa_number?'Send payment to Easypaisa: '+st.easypaisa_number:'The seller will share Easypaisa details on WhatsApp.';
-  if(m==='jazzcash')t=st.jazzcash_number?'Send payment to JazzCash: '+st.jazzcash_number:'The seller will share JazzCash details on WhatsApp.';
-  box.innerHTML=m==='cod'?'':`<div class="payinfo" style="padding:12px;margin-bottom:10px;background:#f6f7f7;border-radius:12px;white-space:pre-wrap">${esc(t)}</div><label>Transaction ID (after you pay)<input id="cPayNote" maxlength="200" placeholder="Optional, you can also send it on WhatsApp"></label>`;
+  if(m==='easypaisa')t=st.easypaisa_number?'Send payment to Easypaisa: '+st.easypaisa_number:'Seller will share Easypaisa details.';
+  if(m==='jazzcash')t=st.jazzcash_number?'Send payment to JazzCash: '+st.jazzcash_number:'Seller will share JazzCash details.';
+  box.innerHTML=m==='cod'?'':`<div style="padding:12px;margin-bottom:10px;background:#f6f7f7;border-radius:12px;white-space:pre-wrap">${esc(t)}</div><label>Transaction ID<input id="cPayNote" maxlength="200" placeholder="Optional"></label>`;
   btn.textContent=m==='cod'?'Place order, pay on delivery':'Place order';
 }
 
@@ -1113,7 +1409,6 @@ function syncCheckout(){
   const ci=$('#cIntl'); if(ci)ci.hidden=!intl;
   const cp=$('#cPostal'); if(cp)cp.required=intl;
   const cs=$('#cShipTo'); if(cs)cs.textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
-  const cph=$('#cPhone'); if(cph)cph.placeholder=m.country==='PK'?'03XXXXXXXXX':((c&&c.dial)||'+')+' number';
   payInfo();
 }
 
@@ -1161,14 +1456,6 @@ function bindStore(){
     if(e.target.id==='sfProduct')$('#sfProduct').classList.remove('open');
   });
   el.addEventListener('submit',async e=>{
-    if(e.target.id==='rvForm'){
-      e.preventDefault();
-      await busy(e.submitter,async()=>{
-        ok(await sb.rpc('submit_review',{p_store:SF.store.id,p_product:e.target.dataset.pid,p_name:$('#rvName').value.trim(),p_phone:$('#rvPhone').value.trim(),p_rating:parseInt($('#rvRating').value,10),p_body:$('#rvBody').value.trim()}));
-        e.target.reset();toast('Thanks! Your review will show after the seller approves it.');
-      });
-      return;
-    }
     if(e.target.id!=='sfForm')return;e.preventDefault();
     const st=SF.store,c=validCart();if(!c.length)return;
     const name=$('#cName').value.trim(),phone=$('#cPhone').value.trim(),city=$('#cCity').value.trim(),address=$('#cAddr').value.trim();
@@ -1180,130 +1467,45 @@ function bindStore(){
     await busy(e.submitter,async()=>{
       const res=await sb.rpc('place_order',{p_store:st.id,p_name:name,p_phone:phone,p_city:city,p_address:address,p_items:c.map(cartItem),p_coupon:$('#cCoupon')?$('#cCoupon').value.trim():'',p_payment:pay,p_note:note,p_country:SF.country,p_state:state,p_postal:postal});
       const row=ok(res)[0];
+      // Link order to customer if logged in
+      if(CUSTOMER){
+        try{await sb.from('orders').update({customer_user_id:CUSTOMER.id}).eq('id',row.o_id||row.id)}catch(e){}
+        await linkCustomerToStore(st.id,name,phone,CUSTOMER.email);
+      }
+      // Mark cart recovered
+      const token=getCartToken(st.id);
+      try{await sb.from('abandoned_carts').update({recovered:true,recovered_at:new Date().toISOString()}).eq('cart_token',token)}catch(e){}
+      // Send emails
+      const orderData={order_no:row.o_no,customer_name:name,customer_phone:phone,address,city,items:c.map(i=>{const p=SF.products.find(x=>x.id===i.id);return{name:p?.name,variant:i.variant,qty:i.qty}}),total:row.o_charged!=null?row.o_charged:row.o_total,payment_method:pay};
+      emailSellerNewOrder(orderData,st);
+      const custEmail=(CUSTOMER&&CUSTOMER.email)||'';
+      if(custEmail)emailCustomerOrderConfirm(orderData,st,custEmail);
       const items=c.map(i=>{const p=SF.products.find(x=>x.id===i.id);return p.name+(i.variant?' ('+i.variant+')':'')+' x'+i.qty}).join(', ');
       setCart([]);e.target.reset();$('#sfDrawer').classList.remove('open');
       try{SF.products=ok(await sb.from('products').select('*').eq('store_id',st.id).eq('is_active',true).order('created_at'))}catch(err){}
       syncCheckout();drawGrid();drawCart();
       const cc=row.o_currency||mk.currency,F=n=>fmtCur(n,cc);
-      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}${state?', '+state:''}${postal?' '+postal:''}\nCountry: ${countryName(mk.country)}\nItems: ${items}\nDiscount: ${F(row.o_m_discount!=null?row.o_m_discount:(row.o_discount||0))}\nShipping: ${F(row.o_m_shipping!=null?row.o_m_shipping:(row.o_shipping||0))}\nTotal: ${F(row.o_charged!=null?row.o_charged:row.o_total)}\nPayment: ${payLabel(pay)}${note?' (ref '+note+')':''}`;
+      const msg=`New order #${row.o_no} from ${st.name}\nName: ${name}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}\nItems: ${items}\nTotal: ${F(row.o_charged!=null?row.o_charged:row.o_total)}\nPayment: ${payLabel(pay)}`;
       $('#doneTitle').textContent='Order #'+row.o_no+' placed';
-      $('#doneText').textContent=pay==='cod'?'Please keep '+F(row.o_charged!=null?row.o_charged:row.o_total)+' ready. You pay the rider in cash when the parcel arrives.':'Please send '+F(row.o_charged!=null?row.o_charged:row.o_total)+' with '+payLabel(pay)+' and share the transaction ID on WhatsApp. The seller confirms your order once the payment arrives. Save your order number to track it.';
+      $('#doneText').textContent=pay==='cod'?'Please keep '+F(row.o_charged!=null?row.o_charged:row.o_total)+' ready. Pay cash when delivered.':'Seller will confirm payment via WhatsApp.';
       $('#doneWa').href='https://wa.me/'+waNum(st.whatsapp)+'?text='+encodeURIComponent(msg);
       $('#sfDone').classList.add('open');
     });
   });
 }
 
-/* ---------- markets ---------- */
-function marketsCard(st){
-  const home=st.home_country||'PK',cur=st.currency||'PKR',ms=Array.isArray(st.markets)?st.markets:[];
-  const used=new Set([home,...ms.map(m=>m.country)]);
-  const opts=COUNTRIES.filter(c=>!used.has(c.code)).map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('');
-  const rows=ms.map(m=>`<tr><td>${esc(countryName(m.country))}</td><td>${esc(m.currency)}</td><td>1 ${esc(m.currency)} = ${Number((1/m.rate).toPrecision(6))} ${esc(cur)}</td><td>${fmtCur(m.shipping,m.currency)}</td><td>${m.free_min>0?fmtCur(m.free_min,m.currency):'Never'}</td><td>${(m.payment_methods||[]).map(payLabel).join(', ')}</td><td><button class="btn small danger" data-market-del="${esc(m.country)}">Remove</button></td></tr>`).join('');
-  return `<section class="advanced-card" style="margin-top:16px;padding:24px" id="marketsCard"><h2>International selling (Markets)</h2>
-  <p class="fine">Your prices are in ${esc(cur)} and your home country is ${esc(countryName(home))}. Add the countries you ship to.</p>
-  <form id="homeForm" class="advanced-form" style="margin-top:16px"><label>Home country<select id="homeCountry">${COUNTRIES.map(c=>`<option value="${c.code}"${c.code===home?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Store currency (3 letters)<input id="homeCurrency" maxlength="3" value="${esc(cur)}" required></label><div class="full"><button class="btn primary">Save home country</button></div></form>
-  <div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Country</th><th>Currency</th><th>Rate</th><th>Shipping</th><th>Free above</th><th>Payments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7">No international markets yet.</td></tr>'}</tbody></table></div>
-  ${opts?`<h3 style="margin:18px 0 8px">Add a market</h3>
-  <form id="marketForm" class="advanced-form"><label>Country<select id="mkCountry">${opts}</select></label><label>Currency<input id="mkCurrency" maxlength="3" required value="${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'')}"></label>
-  <label>1 <span id="mkCurLabel">${esc((countryOf(opts.match(/value="(\w+)"/)[1])||{}).cur||'unit')}</span> equals how many ${esc(cur)}?<input id="mkRate" type="number" step="any" min="0" required></label>
-  <label>Shipping fee<input id="mkShip" type="number" step="any" min="0" value="0"></label>
-  <label>Free shipping above<input id="mkFree" type="number" step="any" min="0" value="0"></label>
-  <label>Payment methods<select id="mkPay" multiple><option value="bank" selected>Bank transfer</option><option value="cod">Cash on Delivery</option><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option></select></label>
-  <div class="full"><button class="btn primary">Add market</button></div></form>`:''}</section>`;
-}
-async function saveStoreFields(fields,msg){
-  const st=curS();
-  const r=await sb.from('stores').update(fields).eq('id',st.id).select().single();
-  if(r.error)throw r.error;
-  MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);
-  await loadAdvanced();renderDash();toast(msg);
-}
-document.addEventListener('change',e=>{
-  if(e.target.id==='mkCountry'){const c=countryOf(e.target.value);if(c){$('#mkCurrency').value=c.cur;$('#mkCurLabel').textContent=c.cur}}
-  if(e.target.id==='mkCurrency'){$('#mkCurLabel').textContent=e.target.value.toUpperCase()||'unit'}
-});
-document.addEventListener('submit',async e=>{
-  if(e.target.id==='homeForm'){
-    e.preventDefault();
-    await busy(e.submitter,()=>saveStoreFields({home_country:$('#homeCountry').value,currency:$('#homeCurrency').value.trim().toUpperCase()},'Home country saved'));
-    return;
-  }
-  if(e.target.id==='marketForm'){
-    e.preventDefault();const st=curS();
-    const inv=parseFloat($('#mkRate').value);
-    if(!(inv>0)){toast('Enter the exchange rate');return}
-    const pays=[...$('#mkPay').selectedOptions].map(x=>x.value);
-    if(!pays.length){toast('Choose at least one payment method');return}
-    const m={country:$('#mkCountry').value,currency:$('#mkCurrency').value.trim().toUpperCase(),rate:Number((1/inv).toPrecision(8)),shipping:Math.max(0,parseFloat($('#mkShip').value)||0),free_min:Math.max(0,parseFloat($('#mkFree').value)||0),payment_methods:pays};
-    await busy(e.submitter,()=>saveStoreFields({markets:[...(st.markets||[]),m]},'Market added'));
-  }
-});
-document.addEventListener('click',async e=>{
-  const d=e.target.closest('[data-market-del]');if(!d)return;
-  const st=curS();
-  if(!confirm('Remove '+countryName(d.dataset.marketDel)+' from your markets?'))return;
-  await busy(d,()=>saveStoreFields({markets:(st.markets||[]).filter(m=>m.country!==d.dataset.marketDel)},'Market removed'));
-});
-
-/* ---------- advanced layer ---------- */
-const ADV={extra:{customers:[],coupons:[],reviews:[],profile:null}};
-async function loadAdvanced(){
-  if(!sb||!USER||!MY.active)return;
-  const [cu,co,re,pr]=await Promise.all([
-    sb.from('customers').select('*').eq('store_id',MY.active).order('updated_at',{ascending:false}).limit(200),
-    sb.from('coupons').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}),
-    sb.from('reviews').select('*').eq('store_id',MY.active).order('created_at',{ascending:false}).limit(200),
-    sb.from('profiles').select('*').eq('id',USER.id).maybeSingle()
-  ]);
-  ADV.extra.customers=cu.error?[]:cu.data||[]; ADV.extra.coupons=co.error?[]:co.data||[]; ADV.extra.reviews=re.error?[]:re.data||[]; ADV.extra.profile=pr.error?null:pr.data;
-}
-function advMetrics(st){
-  const orders=MY.orders.filter(o=>o.status!=='Cancelled'), revenue=orders.reduce((a,o)=>a+o.total,0), avg=orders.length?Math.round(revenue/orders.length):0;
-  const delivered=MY.orders.filter(o=>o.status==='Delivered').length, low=MY.products.filter(p=>p.stock!=null&&p.stock<=5).length;
-  const byCity={}; orders.forEach(o=>byCity[o.city]=(byCity[o.city]||0)+o.total);
-  const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,6), max=topCities[0]?.[1]||1;
-  return `<div class="metric-grid"><div class="metric"><b>${money(revenue)}</b><span>Gross revenue</span></div><div class="metric"><b>${orders.length}</b><span>Active orders</span></div><div class="metric"><b>${money(avg)}</b><span>Average order</span></div><div class="metric"><b>${low}</b><span>Low-stock products</span></div></div>
-  <div class="advanced-grid" style="margin-top:16px"><section class="advanced-card" style="padding:24px"><h2>Sales by city</h2>${topCities.length?topCities.map(([c,v])=>`<div class="bar-row" style="margin:8px 0"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.round(v/max*100)}%"></i></div><b>${money(v)}</b></div>`).join(''):'<p class="fine">No sales yet.</p>'}</section>
-  <section class="advanced-card" style="padding:24px"><h2>Order pipeline</h2>${STATUSES.map(x=>{const n=MY.orders.filter(o=>o.status===x).length;return `<div class="bar-row" style="margin:8px 0"><span>${x}</span><div class="bar"><i style="width:${MY.orders.length?Math.round(n/MY.orders.length*100):0}%"></i></div><b>${n}</b></div>`}).join('')}<p class="fine">Delivered: ${delivered} order(s).</p></section></div>`;
-}
-function advancedPanel(st){
-  const coupons=ADV.extra.coupons||[], customers=ADV.extra.customers||[], reviews=ADV.extra.reviews||[];
-  const prodRows=MY.products.map(p=>`<tr><td>${esc(p.name)}</td><td><input class="stock-input" data-stock="${p.id}" type="number" min="0" value="${p.stock==null?'':p.stock}" placeholder="Not tracked" style="max-width:130px"></td><td>${p.sku?esc(p.sku):'—'}</td><td>${p.is_active?'Visible':'Hidden'}</td></tr>`).join('');
-  const couponRows=coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)}</td><td>${c.usage_limit?c.used_count+'/'+c.usage_limit:c.used_count}</td><td>${c.active?'Active':'Off'}</td><td><button class="btn small danger" data-coupon-del="${c.id}">Delete</button></td></tr>`).join('');
-  const customerRows=customers.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.order_count}</td><td>${money(c.total_spent)}</td></tr>`).join('');
-  const reviewRows=reviews.map(r=>`<tr><td>${esc(r.customer_name)}</td><td style="color:#f5a623">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td><td>${esc(r.body||'')}</td><td><button class="btn small" data-review="${r.id}" data-approved="${r.approved?'false':'true'}">${r.approved?'Hide':'Approve'}</button></td></tr>`).join('');
-  return `${advMetrics(st)}
-  <div class="advanced-grid" style="margin-top:16px">
-    <section class="advanced-card" style="padding:24px"><h2>Inventory</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Product</th><th>Stock</th><th>SKU</th><th>Status</th></tr></thead><tbody>${prodRows||'<tr><td colspan="4">No products.</td></tr>'}</tbody></table></div><button class="btn primary" id="saveInventory" style="margin-top:14px">Save inventory</button></section>
-    <section class="advanced-card" style="padding:24px"><h2>Coupons</h2><form id="couponForm" class="advanced-form"><label>Code<input id="cpCode" required placeholder="SAVE10"></label><label>Type<select id="cpType"><option value="percent">Percent</option><option value="fixed">Fixed</option></select></label><label>Discount<input id="cpValue" type="number" min="1" required></label><label>Minimum order<input id="cpMin" type="number" min="0" value="0"></label><label>Usage limit<input id="cpLimit" type="number" min="0" value="0"></label><label>Expiry<input id="cpExpiry" type="date"></label><div class="full"><button class="btn primary">Create coupon</button></div></form><div class="table-wrap" style="margin-top:14px"><table class="mini-table"><thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody>${couponRows||'<tr><td colspan="5">No coupons yet.</td></tr>'}</tbody></table></div></section>
-    <section class="advanced-card" style="padding:24px"><h2>Customers</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${customerRows||'<tr><td colspan="5">No customers yet.</td></tr>'}</tbody></table></div></section>
-    <section class="advanced-card" style="padding:24px"><h2>Reviews</h2><div class="table-wrap"><table class="mini-table"><thead><tr><th>Customer</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${reviewRows||'<tr><td colspan="4">No reviews yet.</td></tr>'}</tbody></table></div></section>
-  </div>
-  ${marketsCard(st)}<section class="advanced-card" style="margin-top:16px;padding:24px"><h2>Store commerce settings</h2><form id="commerceForm" class="advanced-form"><label>Shipping fee<input id="shipFee" type="number" min="0" value="${st.shipping_fee||0}"></label><label>Free shipping above<input id="freeShip" type="number" min="0" value="${st.free_shipping_min||0}"></label><label>Payment methods<select id="payMethods" multiple>${['cod','bank','easypaisa','jazzcash'].map(m=>`<option value="${m}"${(Array.isArray(st.payment_methods)?st.payment_methods:['cod']).includes(m)?' selected':''}>${payLabel(m)}</option>`).join('')}</select></label><label class="full">Bank details<textarea id="bankDetails">${esc(st.bank_details||'')}</textarea></label><label>Easypaisa number<input id="easyNum" value="${esc(st.easypaisa_number||'')}"></label><label>JazzCash number<input id="jazzNum" value="${esc(st.jazzcash_number||'')}"></label><div class="full"><button class="btn primary">Save commerce settings</button></div></form></section>`;
-}
-addEventListener('click',async e=>{
-  const stock=e.target.closest('#saveInventory');
-  if(stock){await busy(stock,async()=>{for(const i of $$('.stock-input')){const p=MY.products.find(x=>x.id===i.dataset.stock);if(p){const n=i.value.trim()===''?null:Math.max(0,parseInt(i.value,10)||0);await sb.from('products').update({stock:n}).eq('id',p.id)}}await loadStoreData();await loadAdvanced();renderDash();toast('Inventory saved')});return}
-  const cd=e.target.closest('[data-coupon-del]'); if(cd){await busy(cd,async()=>{await sb.from('coupons').delete().eq('id',cd.dataset.couponDel);await loadAdvanced();renderDash();toast('Coupon deleted')});return}
-  const rv=e.target.closest('[data-review]'); if(rv){await busy(rv,async()=>{await sb.from('reviews').update({approved:rv.dataset.approved==='true'}).eq('id',rv.dataset.review);await loadAdvanced();renderDash();toast('Review updated')});return}
-});
-addEventListener('submit',async e=>{
-  if(e.target.id==='couponForm'){e.preventDefault();const st=curS();await busy(e.submitter,async()=>{const code=$('#cpCode').value.trim().toUpperCase();const type=$('#cpType').value;const val=Math.max(1,parseInt($('#cpValue').value,10)||0);const min=Math.max(0,parseInt($('#cpMin').value,10)||0);const lim=Math.max(0,parseInt($('#cpLimit').value,10)||0);const ex=$('#cpExpiry').value?new Date($('#cpExpiry').value+'T23:59:59').toISOString():null;const r=await sb.from('coupons').insert({store_id:st.id,code,discount_type:type,discount_value:val,min_order:min,usage_limit:lim,expires_at:ex});if(r.error)throw r.error;await loadAdvanced();renderDash();toast('Coupon created')});return}
-  if(e.target.id==='commerceForm'){e.preventDefault();const st=curS();const methods=[...$('#payMethods').selectedOptions].map(x=>x.value);await busy(e.submitter,async()=>{const r=await sb.from('stores').update({shipping_fee:Math.max(0,parseInt($('#shipFee').value,10)||0),free_shipping_min:Math.max(0,parseInt($('#freeShip').value,10)||0),payment_methods:methods.length?methods:['cod'],bank_details:$('#bankDetails').value.trim(),easypaisa_number:$('#easyNum').value.trim(),jazzcash_number:$('#jazzNum').value.trim()}).eq('id',st.id).select().single();if(r.error)throw r.error;MY.stores=MY.stores.map(x=>x.id===st.id?r.data:x);await loadAdvanced();renderDash();toast('Commerce settings saved')});return}
-});
-
 /* ---------- tracking ---------- */
 function renderTrack(){
   const el=$('#v-track');
   if(!el)return;
-  el.innerHTML=`<div class="wrap" style="padding:60px 0 80px;min-height:calc(100vh - 110px)"><div class="builder" style="max-width:560px;margin-inline:auto"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store slug, order number and the same phone number used at checkout.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" inputmode="tel" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult" style="margin-top:16px"></div></div></div>`;
+  el.innerHTML=`<div class="wrap" style="padding:60px 0 80px"><div class="builder" style="max-width:560px;margin-inline:auto"><h2>Track your EasyBuy order</h2><p class="fine">Enter the store slug, order number and phone.</p><form id="trackForm"><label>Store slug<input id="tStore" placeholder="my-store" required></label><label>Order number<input id="tNo" type="number" min="1000" required></label><label>Phone<input id="tPhone" placeholder="03XXXXXXXXX" required></label><button class="btn primary big">Track order</button></form><div id="trackResult" style="margin-top:16px"></div></div></div>`;
 }
-addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fafcfb"><b>Order #${x.order_no} from ${esc(st.name)}</b><p style="margin:8px 0 0;color:var(--muted)">Status: <strong>${esc(x.status)}</strong><br>Total: ${x.currency&&x.charged_total!=null?fmtCur(x.charged_total,x.currency):money(x.total)}<br>Customer: ${esc(x.customer_name)}<br>City: ${esc(x.city)}</p></div>`:'<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff3f0;color:#9e2a0e">Order not found.</div>'})});
+addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preventDefault();await busy(e.submitter,async()=>{const slug=$('#tStore').value.trim(),no=parseInt($('#tNo').value,10),phone=$('#tPhone').value.trim();const st=ok(await sb.from('stores').select('id,name').eq('slug',slug).maybeSingle());if(!st)throw new Error('Store not found');const r=ok(await sb.rpc('track_order',{p_store:st.id,p_order_no:no,p_phone:phone}));const x=r[0];$('#trackResult').innerHTML=x?`<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fafcfb"><b>Order #${x.order_no}</b><p style="margin:8px 0 0;color:var(--muted)">Status: <strong>${esc(x.status)}</strong><br>Total: ${money(x.total)}</p></div>`:'<div style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff3f0;color:#9e2a0e">Order not found.</div>'})});
 
 /* ---------- start ---------- */
 (async function init(){
   initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();bindCode();
+  await loadCustomerSession();
   if(!configured){const s=$('#setup'); if(s)s.hidden=false;}
   else{
     try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
