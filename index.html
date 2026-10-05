@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>EasyBuy | Open your online store in 5 minutes</title>
-<meta name="description" content="EasyBuy lets Pakistani sellers open an online store with Cash on Delivery, a seller dashboard, WhatsApp orders and international selling.">
+<title>EasyBuy | Open your online store in five minutes</title>
+<meta name="description" content="EasyBuy is the easiest way for Pakistani sellers to open an online store. Cash on Delivery, WhatsApp orders, and international selling — all in one dashboard.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%2300a878'/><path d='M9 12h14l-1.4 10a2 2 0 0 1-2 1.7h-7.2a2 2 0 0 1-2-1.7L9 12Z' fill='white'/><path d='M12.5 12v-1.5a3.5 3.5 0 0 1 7 0V12' fill='none' stroke='%23ffc933' stroke-width='2' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
-<div class="banner" id="setup" hidden><b>Setup needed.</b> Open <code>config.js</code> and paste your Supabase project URL and anon key. Steps are in README.md.</div>
+<div class="banner" id="setup" hidden><b>Setup needed.</b> Open <code>config.js</code> and paste your Supabase project URL and anon key.</div>
 
 <header class="site-head" id="siteHeader">
   <nav class="wrap nav">
@@ -23,9 +23,10 @@
     </a>
     <div class="nav-links">
       <a href="#/" data-nav="home">Home</a>
-      <a href="#/dashboard" data-nav="dashboard">Seller dashboard</a>
+      <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
+      <a href="#stores">Stores</a>
       <button class="linkbtn" id="navAuth" type="button">Log in</button>
-      <a class="btn primary" href="#/" id="navCreate">Create store</a>
+      <a class="btn primary" href="#/" id="navCreate">Start free</a>
     </div>
   </nav>
 </header>
@@ -34,12 +35,52 @@
 <!-- HOME -->
 <div id="v-home" data-view>
 
-  <!-- HERO -->
-  <div class="wrap hero" id="builderTop">
-    <div class="hero-copy">
-      <span class="eyebrow">🇵🇰 Built for Pakistani sellers</span>
-      <h1>Open your online store in <span class="rotator" id="heroRotator">five minutes</span>.</h1>
-      <p class="lead">Add your products, share your store link and start taking orders today. Every order arrives in your dashboard with a WhatsApp button, and Cash on Delivery works from day one.</p>
+  <!-- ═══════════ HERO (Dark, Rotating) ═══════════ -->
+  <section class="hero-dark" id="builderTop">
+    <div class="hero-dark-bg"></div>
+    <div class="hero-dark-glow"></div>
+    <div class="wrap hero-dark-inner">
+      <div class="hero-dark-copy">
+        <span class="hero-eyebrow">🇵🇰 Built for Pakistani sellers</span>
+        <h1 class="hero-title">
+          <span class="hero-fixed">Open your online store in</span>
+          <span class="hero-rotator" id="heroRotator">
+            <span class="word active">five minutes</span>
+            <span class="word">one afternoon</span>
+            <span class="word">a single evening</span>
+            <span class="word">your lunch break</span>
+          </span>
+        </h1>
+        <p class="hero-lead">Add products from your phone, share your store link, and start taking Cash on Delivery orders today. No credit card. No monthly fees. No coding.</p>
+        <div class="hero-cta-row">
+          <a class="btn btn-hero-primary" href="#/" id="heroCreate">Start free — it takes 5 minutes</a>
+          <a class="btn btn-hero-ghost" href="#stores">Browse live stores →</a>
+        </div>
+        <div class="hero-trust-row">
+          <div><b>2,400+</b><span>stores opened</span></div>
+          <div><b>18,000+</b><span>products listed</span></div>
+          <div><b>45,000+</b><span>orders delivered</span></div>
+        </div>
+      </div>
+      <div class="hero-dark-preview">
+        <div class="hero-frame">
+          <div class="hero-frame-bar"><i></i><i></i><i></i><span id="pvUrl">yourstore.easybuy.pk</span></div>
+          <div class="hero-frame-head"><b id="pvName">Your store</b><span class="pv-cart-mini">Cart 0</span></div>
+          <div class="hero-frame-band"><h3 id="pvBand">Your store</h3><p>Cash on Delivery across Pakistan</p></div>
+          <div class="hero-frame-grid" id="pvGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ QUICK BUILDER FORM ═══════════ -->
+  <section class="wrap block form-block">
+    <div class="form-wrap">
+      <div class="form-copy">
+        <span class="eyebrow">Start now</span>
+        <h2>Create your store in 30 seconds</h2>
+        <p class="sub">Enter a name, pick a category and colour. You'll be adding products within a minute.</p>
+      </div>
       <form class="builder" id="builder" autocomplete="off">
         <label>Store name
           <input id="bName" maxlength="28" placeholder="e.g. Pawtico, Ali Traders">
@@ -49,178 +90,351 @@
         <label>WhatsApp number
           <input id="bWa" inputmode="tel" placeholder="03XXXXXXXXX">
         </label>
-        <button class="btn primary big" type="submit">Create store</button>
-        <p class="fine">Free to start. No credit card required.</p>
+        <button class="btn primary big" type="submit">Create my store →</button>
+        <p class="fine">Free forever. No credit card required.</p>
       </form>
-      <div class="hero-trust">
-        <div><b>2,400+</b><span>stores opened</span></div>
-        <div><b>18,000+</b><span>products listed</span></div>
-        <div><b>45,000+</b><span>orders delivered</span></div>
-      </div>
-    </div>
-    <div class="hero-preview" aria-label="Live preview of your store">
-      <div class="frame" id="frame">
-        <div class="frame-bar"><i></i><i></i><i></i><span id="pvUrl">yourstore.easybuy.pk</span></div>
-        <div class="pv-head"><b id="pvName">Your store</b><span class="pv-cart">Cart 0</span></div>
-        <div class="pv-band"><h3 id="pvBand">Your store</h3><p>Cash on Delivery across Pakistan</p></div>
-        <div class="pv-grid" id="pvGrid"></div>
-      </div>
-      <p class="pv-note">The preview updates as you type.</p>
-    </div>
-  </div>
-
-  <!-- LOGO STRIP -->
-  <section class="logo-strip">
-    <div class="wrap">
-      <p class="strip-label">Trusted by growing Pakistani brands</p>
-      <div class="strip-track">
-        <span>🐾 Pawtico</span><span>👗 Zara Fabrics</span><span>🎧 SoundHub</span>
-        <span>🏠 HomeNest</span><span>💄 GlowUp</span><span>🛍️ Ali Traders</span>
-        <span>☕ Chai Co.</span><span>📱 MobileZone</span>
-      </div>
     </div>
   </section>
 
-  <!-- TABS -->
-  <section class="wrap block tabs-section">
-    <span class="eyebrow">Everything in one place</span>
-    <h2>Sell everywhere your customers shop.</h2>
-    <p class="sub">One dashboard for your storefront, WhatsApp orders, COD payments, inventory and analytics.</p>
-    <div class="tabs" id="featureTabs">
-      <button class="tab on" data-tab="store">Online store</button>
-      <button class="tab" data-tab="cod">Cash on Delivery</button>
-      <button class="tab" data-tab="wa">WhatsApp orders</button>
-      <button class="tab" data-tab="intl">International selling</button>
-      <button class="tab" data-tab="theme">Themes &amp; sections</button>
+  <!-- ═══════════ 4 CATEGORY TABS ═══════════ -->
+  <section class="wrap block tabs-section-dark">
+    <div class="section-head">
+      <span class="eyebrow-dark">Everything in one place</span>
+      <h2 class="section-title-dark">One platform. Every way to sell.</h2>
+      <p class="section-sub-dark">From Instagram to WhatsApp to international markets — EasyBuy handles the boring parts so you can focus on selling.</p>
     </div>
-    <div class="tab-panels" id="tabPanels">
-      <div class="tab-panel on" data-panel="store">
-        <div class="panel-copy">
-          <h3>Your own store link</h3>
-          <p>Every store gets a clean, shareable link. Post it on Instagram, WhatsApp, TikTok — anywhere. The storefront is fast, mobile-first and loads in under a second.</p>
-          <ul class="ticks">
+
+    <div class="dark-tabs">
+      <button class="dark-tab on" data-tab="store">
+        <span class="tab-ico">🛍️</span>
+        <span class="tab-label">Online store</span>
+      </button>
+      <button class="dark-tab" data-tab="cod">
+        <span class="tab-ico">💵</span>
+        <span class="tab-label">Cash on Delivery</span>
+      </button>
+      <button class="dark-tab" data-tab="wa">
+        <span class="tab-ico">💬</span>
+        <span class="tab-label">WhatsApp orders</span>
+      </button>
+      <button class="dark-tab" data-tab="intl">
+        <span class="tab-ico">🌍</span>
+        <span class="tab-label">International</span>
+      </button>
+    </div>
+
+    <div class="dark-tab-panels" id="tabPanels">
+
+      <!-- Store -->
+      <div class="dark-tab-panel on" data-panel="store">
+        <div class="panel-text">
+          <h3>Your own store, your own link</h3>
+          <p>Every EasyBuy store gets a clean, shareable link. Post it on Instagram, TikTok, WhatsApp status or anywhere. Your storefront is fast, mobile-first and loads in under a second.</p>
+          <ul class="panel-ticks">
             <li>Custom store name and colour</li>
-            <li>Upload product photos from your phone</li>
-            <li>Live preview as you build</li>
+            <li>Upload photos from your phone</li>
+            <li>4 beautiful themes to choose from</li>
+            <li>Custom CSS, HTML and JavaScript</li>
           </ul>
-          <a class="btn primary" href="#builderTop">Create your store</a>
+          <a class="btn btn-hero-primary" href="#/">Create your store</a>
         </div>
-        <div class="panel-art art-store"><div class="mini-frame"><div class="mini-head"></div><div class="mini-band"></div><div class="mini-grid"><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel-visual art-store-dark">
+          <div class="mock-frame">
+            <div class="mock-frame-bar"><i></i><i></i><i></i></div>
+            <div class="mock-band"></div>
+            <div class="mock-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
       </div>
-      <div class="tab-panel" data-panel="cod">
-        <div class="panel-copy">
+
+      <!-- COD -->
+      <div class="dark-tab-panel" data-panel="cod">
+        <div class="panel-text">
           <h3>Cash on Delivery, from day one</h3>
-          <p>No payment gateway needed. Customers pay the courier in cash when the parcel arrives. You keep more margin and avoid chargebacks.</p>
-          <ul class="ticks">
+          <p>No payment gateway needed. Customers pay the courier in cash when the parcel arrives. You keep more margin and avoid chargebacks entirely.</p>
+          <ul class="panel-ticks">
             <li>Built-in COD flow at checkout</li>
-            <li>Order statuses: New → Confirmed → Shipped → Delivered</li>
-            <li>Optional bank / Easypaisa / JazzCash</li>
+            <li>Order tracking: New → Delivered</li>
+            <li>Optional Bank / Easypaisa / JazzCash</li>
+            <li>Works across all of Pakistan</li>
           </ul>
-          <a class="btn primary" href="#builderTop">Start with COD</a>
+          <a class="btn btn-hero-primary" href="#/">Start with COD</a>
         </div>
-        <div class="panel-art art-cod"><div class="cod-card"><b>Rs. 2,499</b><span>Pay on delivery</span><i>✓ Order confirmed</i></div></div>
+        <div class="panel-visual art-cod-dark">
+          <div class="mock-cod-card">
+            <span class="mock-cod-label">Order total</span>
+            <b>Rs. 2,499</b>
+            <div class="mock-cod-status">✓ Pay on delivery</div>
+          </div>
+        </div>
       </div>
-      <div class="tab-panel" data-panel="wa">
-        <div class="panel-copy">
-          <h3>WhatsApp in one tap</h3>
-          <p>Every order in your dashboard has a WhatsApp button. Send a confirmation, share tracking, or answer questions — without copying numbers.</p>
-          <ul class="ticks">
-            <li>Auto-filled customer message</li>
+
+      <!-- WhatsApp -->
+      <div class="dark-tab-panel" data-panel="wa">
+        <div class="panel-text">
+          <h3>Every order in one WhatsApp tap</h3>
+          <p>Every order in your dashboard has a WhatsApp button. Confirm orders, share tracking, answer questions — all without copying numbers.</p>
+          <ul class="panel-ticks">
+            <li>Auto-filled message per order</li>
             <li>Store name and order number included</li>
             <li>Works on phone and desktop</li>
+            <li>Free — no paid messaging API</li>
           </ul>
-          <a class="btn primary" href="#builderTop">Try it now</a>
+          <a class="btn btn-hero-primary" href="#/">Try it now</a>
         </div>
-        <div class="panel-art art-wa"><div class="wa-bubble"><div class="wa-top"></div><p>Assalam o Alaikum, this is <b>Pawtico</b> about your order #1042.</p><span class="wa-time">just now ✓✓</span></div></div>
+        <div class="panel-visual art-wa-dark">
+          <div class="mock-wa-bubble">
+            <div class="mock-wa-top"></div>
+            <p>Assalam o Alaikum! Your order <b>#1042</b> from <b>Pawtico</b> is confirmed. Rider arrives tomorrow. ✓✓</p>
+            <span class="mock-wa-time">just now</span>
+          </div>
+        </div>
       </div>
-      <div class="tab-panel" data-panel="intl">
-        <div class="panel-copy">
+
+      <!-- International -->
+      <div class="dark-tab-panel" data-panel="intl">
+        <div class="panel-text">
           <h3>Sell across borders</h3>
-          <p>Add international markets with their own currency, shipping fees and payment methods. Customers see prices in their own money.</p>
-          <ul class="ticks">
+          <p>Add international markets with their own currency, shipping fees and payment methods. Customers see prices in their own money — you get paid your way.</p>
+          <ul class="panel-ticks">
             <li>Per-country currency and rate</li>
             <li>Free shipping thresholds</li>
             <li>Local payment methods per market</li>
+            <li>Automatic country selector</li>
           </ul>
-          <a class="btn primary" href="#builderTop">Go global</a>
+          <a class="btn btn-hero-primary" href="#/">Go global</a>
         </div>
-        <div class="panel-art art-intl"><div class="globe-ring"><span>🇵🇰</span><span>🇦🇪</span><span>🇬🇧</span><span>🇺🇸</span><span>🇸🇦</span></div></div>
+        <div class="panel-visual art-intl-dark">
+          <div class="mock-globe">
+            <span class="flag-f">🇵🇰</span>
+            <span class="flag-f">🇦🇪</span>
+            <span class="flag-f">🇬🇧</span>
+            <span class="flag-f">🇺🇸</span>
+            <span class="flag-f">🇸🇦</span>
+          </div>
+        </div>
       </div>
-      <div class="tab-panel" data-panel="theme">
-        <div class="panel-copy">
-          <h3>Themes &amp; sections</h3>
-          <p>Choose from four beautiful themes and drag sections to build your perfect store. Like Shopify, but simpler and free.</p>
-          <ul class="ticks">
-            <li>4 ready-made themes — Classic, Minimal, Bold, Elegant</li>
-            <li>Add Hero, About, Products, Contact, FAQ sections</li>
-            <li>Live preview before you save</li>
-          </ul>
-          <a class="btn primary" href="#builderTop">Design my store</a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ AI CHAT SHOWCASE ═══════════ -->
+  <section class="wrap block ai-chat-section">
+    <div class="ai-chat-card">
+      <div class="ai-chat-left">
+        <span class="eyebrow-dark">EasyBuy AI</span>
+        <h2>Your store is ready <em>in the chat</em>.</h2>
+        <p>Tell EasyBuy AI what you sell. Get a store name, tagline, product descriptions, and even a colour palette — all suggested in seconds.</p>
+        <div class="ai-chat-features">
+          <div>✨ <b>Store name generator</b> — instant suggestions</div>
+          <div>✍️ <b>Product descriptions</b> — written for you</div>
+          <div>🎨 <b>Colour palettes</b> — matching your vibe</div>
+          <div>💬 <b>WhatsApp replies</b> — professional tone</div>
         </div>
-        <div class="panel-art art-theme">
-          <div class="theme-stack">
-            <div class="theme-chip t1">Classic</div>
-            <div class="theme-chip t2">Minimal</div>
-            <div class="theme-chip t3">Bold</div>
-            <div class="theme-chip t4">Elegant</div>
+      </div>
+      <div class="ai-chat-right">
+        <div class="chat-window">
+          <div class="chat-head">
+            <span class="chat-dot"></span>
+            <b>EasyBuy AI</b>
+            <span class="chat-online">online</span>
+          </div>
+          <div class="chat-body">
+            <div class="chat-msg user">I sell handmade candles in Lahore</div>
+            <div class="chat-msg bot">Great! Here are 3 store name ideas:
+              <div class="chat-suggest">🕯️ <b>GlowLahore</b></div>
+              <div class="chat-suggest">🕯️ <b>Wax & Wicks</b></div>
+              <div class="chat-suggest">🕯️ <b>Lahore Candle Co.</b></div>
+            </div>
+            <div class="chat-msg bot typing"><span></span><span></span><span></span></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- WHY EASYBUY -->
-  <section class="wrap block">
-    <span class="eyebrow">Why sellers choose us</span>
-    <h2>Everything you need. Nothing you don't.</h2>
-    <p class="sub">The essentials for selling online in Pakistan — without a complicated setup.</p>
-    <div class="perks">
-      <div class="perk"><div class="perk-ico">💵</div><h3>Cash on Delivery</h3><p>Customers pay the courier when the parcel arrives. You don't need a payment gateway to start selling.</p></div>
-      <div class="perk"><div class="perk-ico">📦</div><h3>Orders in one place</h3><p>Every order appears in your dashboard, with statuses and a WhatsApp button to reach the customer.</p></div>
-      <div class="perk"><div class="perk-ico">🔗</div><h3>Your own store link</h3><p>Each store gets its own link you can share on Instagram, WhatsApp, TikTok or anywhere else.</p></div>
-      <div class="perk"><div class="perk-ico">📱</div><h3>Built for phones</h3><p>The storefront and the seller dashboard are designed for mobile screens first.</p></div>
-      <div class="perk"><div class="perk-ico">🎟️</div><h3>Coupons &amp; discounts</h3><p>Create percentage or fixed discounts, set minimum orders, and control expiry from your dashboard.</p></div>
-      <div class="perk"><div class="perk-ico">🎨</div><h3>Themes &amp; sections</h3><p>Pick a theme, arrange sections, and make your store truly yours — no coding needed.</p></div>
+  <!-- ═══════════ MULTI-PLATFORM SHOWCASE ═══════════ -->
+  <section class="wrap block multi-section">
+    <div class="section-head">
+      <span class="eyebrow-dark">Everywhere your customers are</span>
+      <h2 class="section-title-dark">One store. Every screen.</h2>
+      <p class="section-sub-dark">Your EasyBuy store works beautifully on phone, tablet and desktop — no apps to install, no updates to manage.</p>
+    </div>
+    <div class="multi-devices">
+      <div class="device device-laptop">
+        <div class="device-screen">
+          <div class="device-band"></div>
+          <div class="device-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="device-base"></div>
+      </div>
+      <div class="device device-tablet">
+        <div class="device-screen">
+          <div class="device-band"></div>
+          <div class="device-grid"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="device device-phone">
+        <div class="device-notch"></div>
+        <div class="device-screen">
+          <div class="device-band-sm"></div>
+          <div class="device-grid-sm"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="wrap block">
-    <span class="eyebrow">How it works</span>
-    <h2>Three steps. In this order.</h2>
-    <p class="sub">From name to first order in a single sitting.</p>
-    <ol class="steps">
-      <li><span class="step-n">01</span><b>Create your store</b><span>Enter a name, choose a colour and add your WhatsApp number.</span></li>
-      <li><span class="step-n">02</span><b>Design your storefront</b><span>Pick a theme and arrange sections — Hero, About, Products and more.</span></li>
-      <li><span class="step-n">03</span><b>Share your link</b><span>Orders arrive in your dashboard, where you can update the status of each one.</span></li>
-    </ol>
-  </section>
-
-  <!-- STATS -->
-  <section class="wrap block stats-block">
-    <div class="stats-grid">
-      <div class="stat"><b>15%</b><span>higher repeat orders with WhatsApp follow-ups</span></div>
-      <div class="stat"><b>60s</b><span>average time from cart to placed order</span></div>
-      <div class="stat"><b>24/7</b><span>order intake — even while you sleep</span></div>
-      <div class="stat"><b>0%</b><span>commission on Cash on Delivery orders</span></div>
+  <!-- ═══════════ INTERNATIONAL SELLING ═══════════ -->
+  <section class="wrap block intl-section">
+    <div class="intl-card">
+      <div class="intl-copy">
+        <span class="eyebrow-dark">Go global</span>
+        <h2>Sell to Pakistan <em>and</em> the world.</h2>
+        <p>Your EasyBuy store speaks in PKR for local customers and automatically shows USD, AED, GBP or SAR to international buyers. Shipping fees adjust per country.</p>
+        <ul class="panel-ticks">
+          <li>21 supported countries out of the box</li>
+          <li>Real-time currency display</li>
+          <li>Free shipping thresholds per market</li>
+          <li>Local payment methods</li>
+        </ul>
+        <a class="btn btn-hero-primary" href="#/">See international features</a>
+      </div>
+      <div class="intl-visual">
+        <div class="map-world">
+          <div class="map-marker m1">🇵🇰<span>Home</span></div>
+          <div class="map-marker m2">🇦🇪</div>
+          <div class="map-marker m3">🇬🇧</div>
+          <div class="map-marker m4">🇺🇸</div>
+          <div class="map-marker m5">🇸🇦</div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- STORES -->
-  <section class="wrap block" id="stores">
-    <span class="eyebrow">Live on EasyBuy</span>
-    <h2>Stores you can visit right now.</h2>
-    <p class="sub">Open any store to see what customers see — including the cart and checkout.</p>
-    <div class="store-list" id="storeList"></div>
+  <!-- ═══════════ STATS COUNTER ═══════════ -->
+  <section class="wrap block stats-section-dark">
+    <div class="stats-grid-dark">
+      <div class="stat-dark">
+        <b data-count="2400">0</b>
+        <span>Stores opened on EasyBuy</span>
+      </div>
+      <div class="stat-dark">
+        <b data-count="18000">0</b>
+        <span>Products listed</span>
+      </div>
+      <div class="stat-dark">
+        <b data-count="45000">0</b>
+        <span>Orders delivered</span>
+      </div>
+      <div class="stat-dark">
+        <b data-count="0" data-suffix="%">0</b>
+        <span>Commission on COD orders</span>
+      </div>
+    </div>
   </section>
 
-  <!-- CTA FINAL -->
-  <section class="wrap block final-cta">
-    <div class="cta-box">
+  <!-- ═══════════ TESTIMONIALS ═══════════ -->
+  <section class="wrap block testi-section">
+    <div class="section-head">
+      <span class="eyebrow">Real sellers, real results</span>
+      <h2>Loved by Pakistani sellers</h2>
+      <p class="sub">From Karachi to Lahore — sellers are growing with EasyBuy.</p>
+    </div>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p>"Set up my store on a Sunday afternoon. Got my first COD order on Monday morning. EasyBuy is genuinely the easiest tool I've used."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">A</div>
+          <div>
+            <b>Ayesha Khan</b>
+            <span>Pawtico · Karachi</span>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p>"I was paying Rs. 11,000/month for Shopify. EasyBuy does everything I need — Cash on Delivery, WhatsApp, one dashboard — for free."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">B</div>
+          <div>
+            <b>Bilal Ahmad</b>
+            <span>SoundHub · Lahore</span>
+          </div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p>"Shipping to UAE and Saudi from Pakistan is now easy. My customers see AED, I see PKR. Money in, orders out. Perfect."</p>
+        <div class="testi-author">
+          <div class="testi-avatar">F</div>
+          <div>
+            <b>Fatima Sheikh</b>
+            <span>GlowUp · Islamabad</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ WHY EASYBUY (Perks) ═══════════ -->
+  <section class="wrap block perks-section">
+    <div class="section-head">
+      <span class="eyebrow">Why sellers choose EasyBuy</span>
+      <h2>Everything you need. Nothing you don't.</h2>
+    </div>
+    <div class="perks-grid">
+      <div class="perk-card"><div class="perk-icon">💵</div><h3>Cash on Delivery</h3><p>No payment gateway. Customers pay the courier in cash when the parcel arrives.</p></div>
+      <div class="perk-card"><div class="perk-icon">📦</div><h3>Orders in one place</h3><p>Every order in your dashboard with statuses and a WhatsApp button.</p></div>
+      <div class="perk-card"><div class="perk-icon">🎨</div><h3>Themes &amp; sections</h3><p>Pick a theme. Arrange sections. Make it truly yours.</p></div>
+      <div class="perk-card"><div class="perk-icon">⚡</div><h3>Custom code</h3><p>Add your own CSS, HTML and JavaScript — no coding limits.</p></div>
+      <div class="perk-card"><div class="perk-icon">🎟️</div><h3>Coupons</h3><p>Percentage or fixed discounts with expiry and usage limits.</p></div>
+      <div class="perk-card"><div class="perk-icon">📊</div><h3>Analytics</h3><p>Sales by city, low-stock alerts, customer lists and pipeline.</p></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ FAQ ═══════════ -->
+  <section class="wrap block faq-section">
+    <div class="section-head">
+      <span class="eyebrow">Questions? We have answers</span>
+      <h2>Frequently asked questions</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item" open>
+        <summary>Is EasyBuy really free?</summary>
+        <p>Yes. EasyBuy is completely free for Pakistani sellers. No monthly fees, no commissions on Cash on Delivery orders, no setup charges. We may add optional paid features in the future, but the core platform will remain free.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How is this different from Shopify?</summary>
+        <p>Shopify costs around Rs. 11,000 per month and is built for global businesses. EasyBuy is built specifically for Pakistan — free, Cash on Delivery first, WhatsApp native, with Easypaisa and JazzCash built in.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do I need a credit card to sign up?</summary>
+        <p>No. You only need an email address. Sign up, create your store, and start taking orders within minutes.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I use my own custom domain?</summary>
+        <p>Every EasyBuy store gets a free easybuy.pk link. Custom domains will be available soon.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How do I get paid?</summary>
+        <p>With Cash on Delivery, you keep 100% of the money the courier collects — nothing comes to EasyBuy. You can also accept Bank, Easypaisa and JazzCash payments, which go directly to your account.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I sell internationally?</summary>
+        <p>Yes. Add any of 21 supported markets, and international customers see prices in their own currency. You keep receiving payments your way.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ═══════════ FINAL CTA ═══════════ -->
+  <section class="wrap block final-cta-dark">
+    <div class="cta-card-dark">
+      <div class="cta-glow"></div>
       <h2>Ready to open your store?</h2>
       <p>It takes less time than reading this page. Really.</p>
-      <a class="btn primary big" href="#builderTop" id="ctaBottom">Create my store free</a>
-      <p class="fine">No credit card. Cancel anytime. Your data stays yours.</p>
+      <a class="btn btn-hero-primary big" href="#/" id="ctaBottom">Create my store free →</a>
+      <p class="fine">No credit card. Free forever. Your data stays yours.</p>
     </div>
   </section>
 
@@ -236,37 +450,47 @@
 <div id="v-track" data-view hidden></div>
 </main>
 
-<footer class="site-foot" id="siteFooter">
-  <div class="wrap foot-grid">
-    <div>
-      <a class="logo" href="#/">
+<!-- ═══════════ PREMIUM FOOTER ═══════════ -->
+<footer class="site-foot-dark" id="siteFooter">
+  <div class="wrap foot-dark-grid">
+    <div class="foot-dark-brand">
+      <a class="logo logo-dark" href="#/">
         <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--brand)"/><path d="M9 12h14l-1.4 10a2 2 0 0 1-2 1.7h-7.2a2 2 0 0 1-2-1.7L9 12Z" fill="var(--on-brand)"/><path d="M12.5 12v-1.5a3.5 3.5 0 0 1 7 0V12" fill="none" stroke="#ffc933" stroke-width="2" stroke-linecap="round"/></svg>
         EasyBuy
       </a>
-      <p class="fine">An online store builder for sellers in Pakistan. Cash on Delivery, inventory, coupons, analytics, themes and international selling in one dashboard.</p>
+      <p>Pakistan's free online store builder. Cash on Delivery, WhatsApp orders and international selling — all in one place.</p>
+      <div class="foot-social">
+        <a href="#" aria-label="Instagram">📷</a>
+        <a href="#" aria-label="Facebook">📘</a>
+        <a href="#" aria-label="Twitter">🐦</a>
+        <a href="#" aria-label="WhatsApp">💬</a>
+      </div>
     </div>
-    <div>
-      <h4>Sellers</h4>
-      <a href="#/dashboard">Dashboard</a>
-      <a href="#builderTop">Create a store</a>
+    <div class="foot-dark-col">
+      <h4>Product</h4>
+      <a href="#/">Create a store</a>
       <a href="#stores">Browse stores</a>
+      <a href="#/dashboard">Dashboard</a>
+      <a href="#/track">Track order</a>
     </div>
-    <div>
-      <h4>Support</h4>
-      <a href="#/track">Track an order</a>
-      <a href="#/">Help centre</a>
-      <a href="#/">WhatsApp us</a>
+    <div class="foot-dark-col">
+      <h4>Features</h4>
+      <a href="#/">Cash on Delivery</a>
+      <a href="#/">WhatsApp orders</a>
+      <a href="#/">Themes &amp; design</a>
+      <a href="#/">International selling</a>
     </div>
-    <div>
+    <div class="foot-dark-col">
       <h4>Company</h4>
       <a href="#/">About</a>
+      <a href="#/">Blog</a>
       <a href="#/">Privacy</a>
       <a href="#/">Terms</a>
     </div>
   </div>
-  <div class="wrap foot-bottom">
-    <span>© <span id="yr"></span> EasyBuy. Made in Pakistan.</span>
-    <span>Prices in PKR. COD across Pakistan.</span>
+  <div class="wrap foot-dark-bottom">
+    <span>© <span id="yr"></span> EasyBuy. Made in Pakistan 🇵🇰</span>
+    <span>Prices in PKR · COD across Pakistan</span>
   </div>
 </footer>
 
