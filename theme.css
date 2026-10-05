@@ -1237,3 +1237,210 @@ fieldset legend{
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   .hero-rotator .word{transition:none !important}
 }
+/* ============================================================
+   STAGE 6: Customer Accounts + Email + Abandoned Carts
+   ============================================================ */
+
+/* Customer login/signup in storefront */
+.cust-auth-bar{
+  display:flex;gap:8px;align-items:center;
+}
+.cust-auth-bar .cust-btn{
+  padding:8px 14px;border-radius:999px;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);
+  color:#fff;font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .18s ease;
+}
+.cust-auth-bar .cust-btn:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}
+
+/* My account page */
+.account-wrap{
+  max-width:900px;margin:60px auto;padding:0 20px;
+}
+.account-header{
+  display:flex;align-items:center;gap:16px;margin-bottom:32px;
+  padding:24px;border-radius:20px;
+  background:linear-gradient(135deg,#07352a,#00a878);
+  color:#fff;
+}
+.account-avatar{
+  width:60px;height:60px;border-radius:50%;
+  background:rgba(255,255,255,.20);
+  display:grid;place-items:center;font-size:24px;
+}
+.account-header h1{font-size:22px;font-weight:750;color:#fff;margin:0}
+.account-header p{color:rgba(255,255,255,.75);font-size:13px;margin:4px 0 0}
+
+.account-tabs{
+  display:flex;gap:6px;margin-bottom:24px;
+  padding:6px;background:var(--surface-muted);border-radius:999px;
+  width:fit-content;
+}
+.account-tab{
+  padding:9px 18px;border:0;background:transparent;border-radius:999px;
+  font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+}
+.account-tab.on{background:#fff;color:var(--ink-strong);box-shadow:0 3px 10px rgba(12,40,34,.08)}
+
+.account-orders{display:grid;gap:14px}
+.account-order{
+  padding:20px;border:1px solid var(--line);border-radius:16px;
+  background:#fff;box-shadow:var(--shadow-sm);
+}
+.account-order-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.account-order-head time{margin-left:auto;color:var(--muted-2);font-size:11px}
+.account-order-foot{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.account-order-foot strong{margin-right:auto;font-weight:700}
+
+/* Cart recovery banner (in cart) */
+.recovery-banner{
+  padding:12px 16px;margin-bottom:14px;
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(0,168,120,.10),rgba(124,92,255,.08));
+  border:1px solid rgba(0,168,120,.20);
+  font-size:13px;color:var(--brand-700);
+}
+
+/* Email settings in dashboard */
+.email-toggle{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;margin-bottom:12px;
+  border:1px solid var(--line);border-radius:14px;background:#fff;
+}
+.email-toggle-label{flex:1;font-size:13px;font-weight:600;color:var(--ink-strong)}
+.email-toggle-hint{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
+
+/* THEME PICKER — 20 Themes */
+.theme-library{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:16px;
+}
+.theme-card{
+  border:2px solid var(--line);border-radius:16px;overflow:hidden;
+  background:#fff;cursor:pointer;transition:all .25s ease;
+  position:relative;
+}
+.theme-card:hover{border-color:var(--brand-300);transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,168,120,.14)}
+.theme-card.on{border-color:var(--brand);box-shadow:0 14px 30px rgba(0,168,120,.25)}
+.theme-card.on::after{
+  content:"✓ Applied";position:absolute;top:10px;right:10px;
+  padding:4px 10px;background:var(--brand);color:#fff;
+  border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.05em;
+}
+.theme-preview{height:130px;position:relative;overflow:hidden}
+.theme-meta{padding:12px 14px;border-top:1px solid var(--line)}
+.theme-name{font-size:13px;font-weight:700;color:var(--ink-strong);display:block}
+.theme-desc{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* 20 Theme previews */
+.tp-classic .theme-preview{background:linear-gradient(135deg,#0b3e31,#00a878)}
+.tp-minimal .theme-preview{background:linear-gradient(135deg,#fff,#f3f4f6);border-bottom:1px solid #e5e7eb}
+.tp-bold .theme-preview{background:linear-gradient(135deg,#ff4d6d,#ffd166,#06d6a0)}
+.tp-elegant .theme-preview{background:linear-gradient(135deg,#0f0f13,#2a2a33);border-bottom:1px solid rgba(212,175,55,.3)}
+.tp-nordic .theme-preview{background:linear-gradient(135deg,#e8eef4,#f6f8fa)}
+.tp-sunset .theme-preview{background:linear-gradient(135deg,#ff8a5b,#ff4d6d,#7c5cff)}
+.tp-ocean .theme-preview{background:linear-gradient(135deg,#0891b2,#06b6d4,#67e8f9)}
+.tp-forest .theme-preview{background:linear-gradient(135deg,#166534,#22c55e)}
+.tp-mono .theme-preview{background:linear-gradient(135deg,#000,#333,#666)}
+.tp-rose .theme-preview{background:linear-gradient(135deg,#fda4af,#fecdd3,#fef2f2)}
+.tp-lavender .theme-preview{background:linear-gradient(135deg,#c4b5fd,#a78bfa,#8b5cf6)}
+.tp-cocoa .theme-preview{background:linear-gradient(135deg,#78350f,#a16207,#d97706)}
+.tp-mint .theme-preview{background:linear-gradient(135deg,#a7f3d0,#6ee7b7,#34d399)}
+.tp-coral .theme-preview{background:linear-gradient(135deg,#fb7185,#f43f5e,#e11d48)}
+.tp-slate .theme-preview{background:linear-gradient(135deg,#334155,#475569,#64748b)}
+.tp-gold .theme-preview{background:linear-gradient(135deg,#1c1917,#44403c,#a16207)}
+.tp-cyan .theme-preview{background:linear-gradient(135deg,#0e7490,#06b6d4,#22d3ee)}
+.tp-amber .theme-preview{background:linear-gradient(135deg,#92400e,#d97706,#f59e0b)}
+.tp-crimson .theme-preview{background:linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)}
+.tp-sage .theme-preview{background:linear-gradient(135deg,#84cc16,#a3e635,#bef264)}
+
+/* Apply 20 themes to storefront */
+#v-store.theme-nordic{background:#eef3f7}
+#v-store.theme-nordic .sf-hero{background:linear-gradient(135deg,#e8eef4,#f6f8fa);color:#1e293b}
+#v-store.theme-nordic .sf-hero h1{color:#1e293b}
+#v-store.theme-nordic .sf-hero p{color:#475569}
+#v-store.theme-nordic .sf-trust span{background:#fff;color:#475569;border-color:#cbd5e1}
+
+#v-store.theme-sunset{background:#fff7ed}
+#v-store.theme-sunset .sf-hero{background:linear-gradient(135deg,#ff8a5b,#ff4d6d,#7c5cff);color:#fff}
+#v-store.theme-sunset .sf-hero h1{color:#fff}
+#v-store.theme-sunset .sf-hero p{color:rgba(255,255,255,.92)}
+
+#v-store.theme-ocean{background:#ecfeff}
+#v-store.theme-ocean .sf-hero{background:linear-gradient(135deg,#0891b2,#06b6d4,#67e8f9);color:#fff}
+#v-store.theme-ocean .sf-hero h1{color:#fff}
+#v-store.theme-ocean .sf-hero p{color:rgba(255,255,255,.92)}
+
+#v-store.theme-forest{background:#f0fdf4}
+#v-store.theme-forest .sf-hero{background:linear-gradient(135deg,#166534,#22c55e);color:#fff}
+#v-store.theme-forest .sf-hero h1{color:#fff}
+
+#v-store.theme-mono{background:#fff;color:#000}
+#v-store.theme-mono .sf-hero{background:#000;color:#fff}
+#v-store.theme-mono .sf-hero h1{color:#fff;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:-.02em}
+#v-store.theme-mono .btn{border-radius:0;background:#000;color:#fff;border-color:#000;box-shadow:none}
+#v-store.theme-mono .card{border-radius:0;border:1px solid #000;box-shadow:none}
+
+#v-store.theme-rose{background:#fff1f2}
+#v-store.theme-rose .sf-hero{background:linear-gradient(135deg,#fda4af,#fecdd3,#fef2f2);color:#881337}
+#v-store.theme-rose .sf-hero h1{color:#881337}
+#v-store.theme-rose .sf-hero p{color:#9f1239}
+
+#v-store.theme-lavender{background:#faf5ff}
+#v-store.theme-lavender .sf-hero{background:linear-gradient(135deg,#c4b5fd,#a78bfa,#8b5cf6);color:#fff}
+#v-store.theme-lavender .sf-hero h1{color:#fff}
+
+#v-store.theme-cocoa{background:#fffbeb}
+#v-store.theme-cocoa .sf-hero{background:linear-gradient(135deg,#78350f,#a16207,#d97706);color:#fff}
+#v-store.theme-cocoa .sf-hero h1{color:#fff}
+
+#v-store.theme-mint{background:#f0fdfa}
+#v-store.theme-mint .sf-hero{background:linear-gradient(135deg,#a7f3d0,#6ee7b7,#34d399);color:#064e3b}
+#v-store.theme-mint .sf-hero h1{color:#064e3b}
+#v-store.theme-mint .sf-hero p{color:#065f46}
+
+#v-store.theme-coral{background:#fff1f2}
+#v-store.theme-coral .sf-hero{background:linear-gradient(135deg,#fb7185,#f43f5e,#e11d48);color:#fff}
+#v-store.theme-coral .sf-hero h1{color:#fff}
+
+#v-store.theme-slate{background:#f1f5f9}
+#v-store.theme-slate .sf-hero{background:linear-gradient(135deg,#334155,#475569,#64748b);color:#fff}
+#v-store.theme-slate .sf-hero h1{color:#fff}
+
+#v-store.theme-gold{background:#0c0a09;color:#fafaf9}
+#v-store.theme-gold .sf-hero{background:linear-gradient(135deg,#1c1917,#44403c,#a16207);color:#fafaf9;text-align:center}
+#v-store.theme-gold .sf-hero h1{color:#fafaf9;font-weight:900}
+#v-store.theme-gold .sf-main{background:#0c0a09}
+#v-store.theme-gold .card{background:#1c1917;border-color:rgba(212,175,55,.20);color:#fafaf9}
+#v-store.theme-gold .card h3{color:#fafaf9}
+#v-store.theme-gold .price{color:#d4af37}
+#v-store.theme-gold .sf-head{background:rgba(12,10,9,.95)}
+#v-store.theme-gold .sf-logo{color:#d4af37}
+
+#v-store.theme-cyan{background:#ecfeff}
+#v-store.theme-cyan .sf-hero{background:linear-gradient(135deg,#0e7490,#06b6d4,#22d3ee);color:#fff}
+#v-store.theme-cyan .sf-hero h1{color:#fff}
+
+#v-store.theme-amber{background:#fffbeb}
+#v-store.theme-amber .sf-hero{background:linear-gradient(135deg,#92400e,#d97706,#f59e0b);color:#fff}
+#v-store.theme-amber .sf-hero h1{color:#fff}
+
+#v-store.theme-crimson{background:#fef2f2}
+#v-store.theme-crimson .sf-hero{background:linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444);color:#fff}
+#v-store.theme-crimson .sf-hero h1{color:#fff}
+
+#v-store.theme-sage{background:#f7fee7}
+#v-store.theme-sage .sf-hero{background:linear-gradient(135deg,#84cc16,#a3e635,#bef264);color:#365314}
+#v-store.theme-sage .sf-hero h1{color:#365314}
+#v-store.theme-sage .sf-hero p{color:#4d7c0f}
+
+/* Customer auth modal (storefront) */
+.cust-modal .box{max-width:440px}
+.cust-modal .box h2{margin-bottom:6px}
+.cust-modal .box p{color:var(--muted);margin-bottom:20px;font-size:13px}
+.cust-modal .box label{margin-bottom:14px}
+.cust-modal .box .btn{width:100%;margin-top:6px}
+.cust-modal .switch-line{
+  text-align:center;margin-top:16px;font-size:12px;color:var(--muted);
+}
+.cust-modal .switch-line a{color:var(--brand);font-weight:600;cursor:pointer}
