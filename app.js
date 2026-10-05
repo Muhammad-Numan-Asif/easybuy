@@ -20,7 +20,7 @@ const slugify=s=>{let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace
 const slugPreview=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,24)||'yourstore';
 function ink(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#10231d':'#ffffff'}
 function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('0'))d='92'+d.slice(1);return d}
-let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200)}
+let toastT;function toast(m){const t=$('#toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200)}
 const ok=r=>{if(r.error)throw r.error;return r.data};
 async function busy(btn,fn){if(btn)btn.disabled=true;try{return await fn()}catch(e){console.error(e);toast(e.message||'Something went wrong')}finally{if(btn)btn.disabled=false}}
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
@@ -35,8 +35,8 @@ let USER=null;
 
 /* ---------- router ---------- */
 function route(){
- const cleanHash=(location.hash||'#/').split('?')[0];
-const parts=cleanHash.split('/');
+  const cleanHash=(location.hash||'#/').split('?')[0];
+  const parts=cleanHash.split('/');
   let v=parts[1]==='dashboard'?'dashboard':parts[1]==='s'?'store':parts[1]==='login'?'login':parts[1]==='track'?'track':'home';
   if(v==='dashboard'&&!USER){AUTH.note=AUTH.note||'Log in to open your seller dashboard.';location.hash='#/login';return}
   $$('[data-view]').forEach(e=>e.hidden=e.id!=='v-'+v);
@@ -122,24 +122,72 @@ document.addEventListener('click',async e=>{
   }
 });
 
-/* ---------- home ---------- */
-const B={cat:'Pets',color:COLORS[0]};
-const HERO_WORDS=['five minutes','one afternoon','your lunch break','a single evening'];
-let heroI=0, heroT=null;
-
+/* ============================================================
+   HOME PAGE EXTRAS
+   ============================================================ */
+const HERO_WORDS=['five minutes','one afternoon','a single evening','your lunch break'];
+let heroI=0,heroT=null;
 function startHeroRotator(){
-  const el=$('#heroRotator');
-  if(!el)return;
+  const words=$$('.hero-rotator .word');
+  if(!words.length)return;
   clearInterval(heroT);
   heroT=setInterval(()=>{
-    el.classList.add('swap');
-    setTimeout(()=>{
-      heroI=(heroI+1)%HERO_WORDS.length;
-      el.textContent=HERO_WORDS[heroI];
-      el.classList.remove('swap');
-    },350);
-  },3200);
+    words[heroI].classList.remove('active');
+    heroI=(heroI+1)%words.length;
+    words[heroI].classList.add('active');
+  },2600);
 }
+
+function initDarkTabs(){
+  const tabs=$$('.dark-tab');
+  if(!tabs.length)return;
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    const key=t.dataset.tab;
+    tabs.forEach(x=>x.classList.toggle('on',x===t));
+    $$('.dark-tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===key));
+  }));
+}
+
+let statsDone=false;
+function initStatsCounter(){
+  if(statsDone)return;
+  const section=document.querySelector('.stats-section-dark');
+  if(!section)return;
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting&&!statsDone){
+        statsDone=true;
+        $$('.stat-dark b').forEach(el=>{
+          const target=parseInt(el.dataset.count,10)||0;
+          const suffix=el.dataset.suffix||'+';
+          const dur=1400;
+          const start=performance.now();
+          const step=(now)=>{
+            const t=Math.min(1,(now-start)/dur);
+            const val=Math.floor(target*(1-Math.pow(1-t,3)));
+            el.textContent=val.toLocaleString('en-PK')+(target>0?suffix:'');
+            if(t<1)requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        });
+        io.disconnect();
+      }
+    });
+  },{threshold:0.25});
+  io.observe(section);
+}
+
+function initFaqAccordion(){
+  const items=$$('.faq-item');
+  items.forEach(item=>{
+    item.addEventListener('toggle',()=>{
+      if(item.open){items.forEach(x=>{if(x!==item)x.open=false})}
+    });
+  });
+}
+
+/* ---------- home ---------- */
+const B={cat:'Pets',color:COLORS[0]};
 
 function initFeatureTabs(){
   const wrap=$('#featureTabs'); if(!wrap)return;
@@ -152,12 +200,15 @@ function initFeatureTabs(){
 }
 
 function initBuilder(){
-  $('#bCats').innerHTML=Object.keys(CATS).map(c=>`<button type="button" class="chip" data-cat="${c}" aria-pressed="${c===B.cat}">${CATS[c]} ${c}</button>`).join('');
-  $('#bColors').innerHTML=COLORS.map(c=>`<button type="button" class="sw" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===B.color}"></button>`).join('');
-  $('#bCats').addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(!b)return;B.cat=b.dataset.cat;$$('#bCats .chip').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
-  $('#bColors').addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b)return;B.color=b.dataset.color;$$('#bColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
-  $('#bName').addEventListener('input',preview);
-  $('#builder').addEventListener('submit',async e=>{
+  const catBox=$('#bCats'),colorBox=$('#bColors');
+  if(!catBox||!colorBox)return;
+  catBox.innerHTML=Object.keys(CATS).map(c=>`<button type="button" class="chip" data-cat="${c}" aria-pressed="${c===B.cat}">${CATS[c]} ${c}</button>`).join('');
+  colorBox.innerHTML=COLORS.map(c=>`<button type="button" class="sw" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c===B.color}"></button>`).join('');
+  catBox.addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(!b)return;B.cat=b.dataset.cat;$$('#bCats .chip').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  colorBox.addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b)return;B.color=b.dataset.color;$$('#bColors .sw').forEach(x=>x.setAttribute('aria-pressed',x===b));preview()});
+  const bn=$('#bName'); if(bn)bn.addEventListener('input',preview);
+  const bf=$('#builder');
+  if(bf)bf.addEventListener('submit',async e=>{
     e.preventDefault();
     const name=$('#bName').value.trim();
     if(!name){toast('Enter a store name first');$('#bName').focus();return}
@@ -166,37 +217,42 @@ function initBuilder(){
     if(!USER){lsSet('eb.pending',JSON.stringify(draft));AUTH.mode='signup';location.hash='#/login';route();return}
     await busy(e.submitter,async()=>{const st=await createStore(draft);MY.active=st.id;D.tab='design';toast('Store created. Design it now!');location.hash='#/dashboard';route()});
   });
-  $('#navCreate').addEventListener('click',e=>{
-    if((location.hash||'#/')==='#/'||location.hash===''){e.preventDefault();$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})}
+  const nc=$('#navCreate'), hc=$('#heroCreate'), cb=$('#ctaBottom');
+  [nc,hc,cb].forEach(b=>{
+    if(!b)return;
+    b.addEventListener('click',e=>{
+      const target=$('#bName');
+      if(target){
+        e.preventDefault();
+        target.scrollIntoView({behavior:'smooth',block:'center'});
+        setTimeout(()=>target.focus({preventScroll:true}),400);
+      }
+    });
   });
-  const cta=$('#ctaBottom');
-  if(cta)cta.addEventListener('click',e=>{e.preventDefault();$('#builderTop').scrollIntoView();setTimeout(()=>$('#bName').focus({preventScroll:true}),400)});
   preview();
 }
 
 function preview(){
-  const name=$('#bName').value.trim()||'Your store';
-  const f=$('#frame');f.style.setProperty('--accent',B.color);f.style.setProperty('--on-accent',ink(B.color));
-  $('#pvName').textContent=name;$('#pvBand').textContent=name;
-  $('#pvUrl').textContent=slugPreview($('#bName').value)+'.easybuy.pk';
-  const e=CATS[B.cat],prices=['1,499','2,999','799'];
-  $('#pvGrid').innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
+  const nameEl=$('#bName');
+  if(!nameEl)return;
+  const name=nameEl.value.trim()||'Your store';
+  const f=$('#frame'); if(f){f.style.setProperty('--accent',B.color);f.style.setProperty('--on-accent',ink(B.color));}
+  const pn=$('#pvName'),pb=$('#pvBand'),pu=$('#pvUrl'),pg=$('#pvGrid');
+  if(pn)pn.textContent=name;
+  if(pb)pb.textContent=name;
+  if(pu)pu.textContent=slugPreview(nameEl.value)+'.easybuy.pk';
+  if(pg){
+    const e=CATS[B.cat],prices=['1,499','2,999','799'];
+    pg.innerHTML=prices.map(p=>`<div class="pv-tile"><div class="pv-pic">${e}</div><div class="pv-txt"><s></s><s></s><strong>Rs. ${p}</strong></div></div>`).join('');
+  }
 }
 
 async function renderHome(){
   const yr=$('#yr'); if(yr)yr.textContent=new Date().getFullYear();
   startHeroRotator();
-  const box=$('#storeList');
-  if(!box)return;
-  if(!sb){box.innerHTML='<p class="sub">Stores will appear here once the platform is connected.</p>';return}
-  try{
-    const list=ok(await sb.from('stores').select('slug,name,category,color').order('created_at',{ascending:false}).limit(12));
-    box.innerHTML=list.length?list.map(s=>`
-      <div class="store-row"><div class="store-dot" style="background:${esc(s.color)};color:${ink(s.color)}">${CATS[s.category]||'🛍️'}</div>
-      <div><b>${esc(s.name)}</b><small>${esc(s.category)}</small></div>
-      <a class="btn small" href="#/s/${esc(s.slug)}">Visit store</a></div>`).join('')
-      :'<p class="sub">No stores have been created yet. Yours can be the first.</p>';
-  }catch(e){box.innerHTML='<p class="sub">Stores could not be loaded: '+esc(e.message)+'</p>'}
+  initDarkTabs();
+  initStatsCounter();
+  initFaqAccordion();
 }
 
 /* ---------- dashboard ---------- */
@@ -247,7 +303,6 @@ function renderDash(){
     </div>
   </div>`;
 
-  /* ---------- Auto-load preview iframes AFTER data is ready ---------- */
   if(D.tab==='design' && st){
     const previewBody=$('#designerPreviewBody');
     if(previewBody){
@@ -259,7 +314,7 @@ function renderDash(){
         iframe.style.width='100%';
         iframe.style.height='100%';
         iframe.style.border='0';
-        iframe.src='#/s/'+st.slug+'?_r='+Date.now();
+        iframe.src='#/s/'+st.slug;
         previewBody.appendChild(iframe);
       },150);
     }
@@ -268,13 +323,14 @@ function renderDash(){
     setTimeout(()=>{
       const frame=$('#codeFrame');
       if(frame){
-        const src=frame.getAttribute('src').split('&_r=')[0].split('?_r=')[0];
+        const src='#/s/'+st.slug;
         frame.setAttribute('src','about:blank');
-        setTimeout(()=>frame.setAttribute('src',src+'?_r='+Date.now()),80);
+        setTimeout(()=>frame.setAttribute('src',src),80);
       }
     },150);
   }
 }
+
 function ordersPanel(st){
   if(!MY.orders.length)return `<div class="panel-box empty"><h3>No orders yet</h3><p>Share your store link. When a customer orders, it shows up here. Tap Refresh to check for new ones.</p><a class="btn primary" href="#/s/${esc(st.slug)}">Open your store</a></div>`;
   return `<div class="panel-box">${MY.orders.map(o=>`
@@ -289,6 +345,7 @@ function ordersPanel(st){
       </div>
     </article>`).join('')}</div>`;
 }
+
 function productsPanel(st){
   const f=D.form;
   const form=f?`<form class="dashboard-card" id="pForm" style="margin:0 24px 18px;padding:24px"><div class="row-head"><h2>${f.id?'Edit product':'Add product'}</h2><button class="btn small" type="button" data-act="cancelform">Close</button></div>
@@ -381,7 +438,7 @@ function refreshDesignerFrame(){
     iframe.style.width='100%';
     iframe.style.height='100%';
     iframe.style.border='0';
-    iframe.src='#/s/'+st.slug+'?_r='+Date.now();
+    iframe.src='#/s/'+st.slug;
     previewBody.appendChild(iframe);
   },150);
 }
@@ -441,9 +498,8 @@ function refreshCodeFrame(){
   const f=$('#codeFrame');
   if(!f)return;
   const st=curS();if(!st)return;
-  const src='#/s/'+st.slug+'?_r='+Date.now();
   f.setAttribute('src','about:blank');
-  setTimeout(()=>f.setAttribute('src',src),80);
+  setTimeout(()=>f.setAttribute('src','#/s/'+st.slug),80);
 }
 
 function settingsPanel(st){
@@ -458,6 +514,7 @@ function settingsPanel(st){
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit">Save settings</button><button class="btn danger" type="button" data-act="delstore">Delete this store</button></div>
   </form>`;
 }
+
 function toBlob(file,cb){
   const r=new FileReader();
   r.onload=()=>{const im=new Image();im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);c.toBlob(b=>cb(b),'image/jpeg',.82)};im.onerror=()=>toast('That file is not an image');im.src=r.result};
@@ -662,7 +719,7 @@ function bindDash(){
     }
     const st=curS();
     const tab=e.target.closest('[data-tab]');if(tab){D.tab=tab.dataset.tab;D.form=null;D.file=null;renderDash();return}
-    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop').scrollIntoView();$('#bName').focus({preventScroll:true})},50);return}
+    if(e.target.id==='goCreate'){e.preventDefault();location.hash='#/';route();setTimeout(()=>{$('#builderTop')?.scrollIntoView();$('#bName')?.focus({preventScroll:true})},50);return}
     if(!st)return;
     const ed=e.target.closest('[data-edit]');if(ed){D.form={...MY.products.find(x=>x.id===ed.dataset.edit)};D.file=null;renderDash();$('#pForm')&&$('#pForm').scrollIntoView();return}
     const dl=e.target.closest('[data-del]');
@@ -868,7 +925,6 @@ async function renderStore(slug){
   const el=$('#v-store');
   el.innerHTML='<div class="wrap empty" style="padding-top:80px">Loading store...</div>';
 
-  // Clean up custom code from previous store
   const oldCSS=document.getElementById('storeCustomCSS');if(oldCSS)oldCSS.remove();
   const oldHTML=document.getElementById('storeCustomHTML');if(oldHTML)oldHTML.remove();
   const oldJS=document.getElementById('storeCustomJS');if(oldJS)oldJS.remove();
@@ -927,7 +983,6 @@ async function renderStore(slug){
   <div class="modal product-modal" id="sfProduct"><div class="box"><div class="sheet-head"><h2>Product</h2><button class="btn small" data-sf="closeproduct">Close</button></div><div id="pmBody"></div></div></div>`;
   syncCheckout();drawGrid();drawCart();
 
-  /* ----- Inject custom code ----- */
   if(st.custom_css){
     const styleEl=document.createElement('style');
     styleEl.id='storeCustomCSS';
@@ -951,6 +1006,7 @@ async function renderStore(slug){
     }catch(err){console.error('Custom JS error:',err)}
   }
 }
+
 function drawGrid(){
   const st=SF.store,q=SF.q.toLowerCase();
   const cats=[...new Set(SF.products.map(p=>p.category).filter(Boolean))];
@@ -972,6 +1028,7 @@ function drawGrid(){
     <div class="price">${priceHtml(p)}</div>${btn}</div></article>`}).join('')
     ||`<div class="empty" style="grid-column:1/-1"><h3>${SF.products.length?'No products match your search':'This store has no products yet'}</h3><p>${SF.products.length?'Try a different word or category.':'Please check back soon.'}</p></div>`;
 }
+
 function openProduct(p){
   const st=SF.store,vs=Array.isArray(p.variants)?p.variants:[],rt=ratingOf(p.id),mine=SF.reviews.filter(r=>r.product_id===p.id);
   const note=isSold(p)?'<p class="stock-note out" style="color:var(--danger)">Sold out</p>':lowStock(p)?`<p class="stock-note low" style="color:var(--warning)">Only ${p.stock} left</p>`:'';
@@ -998,6 +1055,7 @@ function openProduct(p){
     </form></details></div>`;
   $('#sfProduct').classList.add('open');
 }
+
 function drawCart(){
   const c=validCart();
   const cnt=$('#sfCount'); if(cnt)cnt.textContent=c.reduce((a,b)=>a+b.qty,0);
@@ -1008,6 +1066,7 @@ function drawCart(){
     return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px"><div><b>${esc(p.name)}</b>${i.variant?`<br><small>${esc(i.variant)}</small>`:''}<br><small>${mp(unitPrice(p,i.variant))} x ${i.qty}</small></div><div class="qty" style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 8px"><button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="-1" aria-label="Remove one" style="border:0;background:transparent;cursor:pointer">−</button>${i.qty}<button data-chg="${p.id}" data-var="${esc(i.variant||'')}" data-d="1" aria-label="Add one" style="border:0;background:transparent;cursor:pointer">+</button></div></div>`}).join('');
   refreshQuote();
 }
+
 let quoteT;
 function refreshQuote(){
   clearTimeout(quoteT);
@@ -1031,6 +1090,7 @@ function refreshQuote(){
     if(msg){msg.textContent=code?(q.coupon_msg||''):'';msg.style.color=q.coupon_msg==='Coupon applied'?'var(--brand)':'var(--muted)'}
   },250);
 }
+
 function payInfo(){
   const st=SF.store,sel=$('#cPay'),box=$('#payInfo'),btn=$('#placeBtn');if(!sel||!box)return;
   const m=sel.value;let t='';
@@ -1040,6 +1100,7 @@ function payInfo(){
   box.innerHTML=m==='cod'?'':`<div class="payinfo" style="padding:12px;margin-bottom:10px;background:#f6f7f7;border-radius:12px;white-space:pre-wrap">${esc(t)}</div><label>Transaction ID (after you pay)<input id="cPayNote" maxlength="200" placeholder="Optional, you can also send it on WhatsApp"></label>`;
   btn.textContent=m==='cod'?'Place order, pay on delivery':'Place order';
 }
+
 function syncCheckout(){
   const st=SF.store,m=curMarket(),sel=$('#cPay');if(!sel)return;
   const keep=sel.value,methods=Array.isArray(m.payment_methods)&&m.payment_methods.length?m.payment_methods:['cod'];
@@ -1049,11 +1110,13 @@ function syncCheckout(){
   const trust=$('#sfTrust');
   if(trust)trust.innerHTML=methods.map(x=>`<span>${esc(payLabel(x))}</span>`).join('')+(n?`<span>Ships to ${n+1} countries</span>`:`<span>Delivery across ${esc(countryName(homeCountry(st)))}</span>`)+'<span>WhatsApp support</span>';
   const intl=m.country!==homeCountry(st),c=countryOf(m.country);
-  $('#cIntl').hidden=!intl;$('#cPostal').required=intl;
-  $('#cShipTo').textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
-  $('#cPhone').placeholder=m.country==='PK'?'03XXXXXXXXX':((c&&c.dial)||'+')+' number';
+  const ci=$('#cIntl'); if(ci)ci.hidden=!intl;
+  const cp=$('#cPostal'); if(cp)cp.required=intl;
+  const cs=$('#cShipTo'); if(cs)cs.textContent=(n||intl)?'Shipping to '+countryName(m.country)+', prices in '+m.currency+'.':'';
+  const cph=$('#cPhone'); if(cph)cph.placeholder=m.country==='PK'?'03XXXXXXXXX':((c&&c.dial)||'+')+' number';
   payInfo();
 }
+
 function bindStore(){
   const el=$('#v-store');
   el.addEventListener('input',e=>{
@@ -1241,7 +1304,7 @@ addEventListener('submit',async e=>{if(e.target.id!=='trackForm')return;e.preven
 /* ---------- start ---------- */
 (async function init(){
   initBuilder();initFeatureTabs();bindDash();bindStore();bindDesigner();bindCode();
-  if(!configured)$('#setup').hidden=false;
+  if(!configured){const s=$('#setup'); if(s)s.hidden=false;}
   else{
     try{const r=await sb.auth.getSession();USER=r.data.session?r.data.session.user:null}catch(e){}
     sb.auth.onAuthStateChange((_e,s)=>{USER=s?s.user:null;paintNav()});
