@@ -1444,3 +1444,11 @@ fieldset legend{
   text-align:center;margin-top:16px;font-size:12px;color:var(--muted);
 }
 .cust-modal .switch-line a{color:var(--brand);font-weight:600;cursor:pointer}
+/* Advanced panel placeholder */
+.advanced-card{
+  padding:24px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow-sm);
+}
